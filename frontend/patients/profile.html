@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Profile — CCMS</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<div id="global-spinner" class="global-spinner-overlay">
+  <span class="spinner spinner-dark spinner-lg"></span>
+</div>
+
+<!-- Create Invoice from Visit Modal (admin/receptionist only) -->
+<div class="modal-overlay" id="invoice-modal">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Invoice from Consultation</h3>
+      <button class="modal-close" onclick="closeInvoiceModal()">×</button>
+    </div>
+
+    <!-- Consultation summary (read-only) -->
+    <div id="inv-consult-summary"
+         style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;">
+      <div style="font-weight:600;margin-bottom:6px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Consultation Summary</div>
+      <div style="margin-bottom:6px;"><span style="color:var(--text-muted);">Doctor: </span><span id="inv-doctor">—</span> &nbsp;·&nbsp; <span style="color:var(--text-muted);">Date: </span><span id="inv-visit-date">—</span></div>
+      <div style="margin-bottom:8px;"><span style="color:var(--text-muted);">Notes: </span><span id="inv-notes" style="font-style:italic;">—</span></div>
+      <div id="inv-diagnoses-wrap">
+        <span style="color:var(--text-muted);">Diagnoses: </span><span id="inv-diagnoses">—</span>
+      </div>
+    </div>
+
+    <!-- Line items -->
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label class="form-label" style="margin:0;">Invoice Line Items</label>
+        <button type="button" class="btn btn-outline btn-sm" onclick="addInvoiceServiceRow()">+ Add Service</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">Item</th>
+            <th style="padding:8px;text-align:right;width:60px;border-bottom:1px solid var(--border);">Qty</th>
+            <th style="padding:8px;text-align:right;width:110px;border-bottom:1px solid var(--border);">Unit Price (SSP)</th>
+            <th style="padding:8px;width:30px;border-bottom:1px solid var(--border);"></th>
+          </tr>
+        </thead>
+        <tbody id="inv-items-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Discount + Total -->
+    <div style="display:flex;justify-content:flex-end;gap:16px;align-items:center;margin-bottom:16px;font-size:13px;">
+      <label style="color:var(--text-muted);">Discount (SSP):
+        <input type="number" id="inv-discount" value="0" min="0" step="0.01"
+               style="width:90px;margin-left:6px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;"
+               oninput="updateInvTotal()">
+      </label>
+      <div style="font-weight:700;font-size:15px;">Total: <span id="inv-total">SSP 0.00</span></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeInvoiceModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitInvoice()">Create Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Patient Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Patient Info</h3>
+      <button class="modal-close" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" id="edit-phone" class="form-control" title="Phone" placeholder="+211 912 000 000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="edit-email" class="form-control" title="Email" placeholder="patient@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Blood Type</label>
+        <select id="edit-blood-type" class="form-control" title="Blood Type">
+          <option value="">Unknown</option>
+          <option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option>
+          <option>AB+</option><option>AB-</option>
+          <option>O+</option><option>O-</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Insurance Provider</label>
+        <input type="text" id="edit-insurance" class="form-control" title="Insurance Provider" placeholder="Insurance provider">
+      </div>
+      <div class="form-group full-span">
+        <label class="form-label">Address</label>
+        <textarea id="edit-address" class="form-control" rows="2" title="Address" placeholder="Patient address"></textarea>
+      </div>
+      <div class="form-group full-span">
+        <label class="form-label">Emergency Contact</label>
+        <input type="text" id="edit-emergency" class="form-control" placeholder="Name — +211 912 000 000">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePatient()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div id="header-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <main class="main">
+    <div class="page-header">
+      <h1 class="page-title" id="page-title">Patient Profile</h1>
+      <div class="inline-actions">
+        <a href="/patients/list.html" class="btn btn-outline btn-sm">← Back to Patients</a>
+        <button class="btn btn-primary btn-sm" data-role="admin,receptionist" onclick="openEditModal()">Edit</button>
+      </div>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div id="profile-card" class="profile-grid">
+      <div class="card">
+        <div class="card-title">Personal Information</div>
+        <div id="personal-info">
+          <div class="empty-state"><div class="empty-state-text">Loading...</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Medical Information</div>
+        <div id="medical-info">
+          <div class="empty-state"><div class="empty-state-text">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid summary-spacing" id="patient-summary">
+      <div class="stat-card">
+        <div class="stat-card-value">—</div>
+        <div class="stat-card-label">Visits</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value">—</div>
+        <div class="stat-card-label">Diagnoses</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value">—</div>
+        <div class="stat-card-label">Active Prescriptions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value">—</div>
+        <div class="stat-card-label">Open Invoices</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('visits', this)">Medical Visits</button>
+      <button class="tab-btn" onclick="switchTab('prescriptions', this)">Prescriptions</button>
+      <button class="tab-btn" onclick="switchTab('appointments', this)">Appointments</button>
+      <button class="tab-btn" onclick="switchTab('billing', this)">Billing</button>
+    </div>
+
+    <!-- Medical Visits Tab -->
+    <div id="tab-visits" class="tab-content active">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Doctor</th><th>Diagnoses</th><th>Notes</th><th data-role="admin,receptionist"></th></tr>
+          </thead>
+          <tbody id="visits-tbody">
+            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">Loading...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Prescriptions Tab -->
+    <div id="tab-prescriptions" class="tab-content">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Drug</th><th>Dosage</th><th>Duration</th><th>Visit Date</th><th>Status</th></tr>
+          </thead>
+          <tbody id="prescriptions-tbody">
+            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">Loading...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Appointments Tab -->
+    <div id="tab-appointments" class="tab-content">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Date & Time</th><th>Doctor</th><th>Reason</th><th>Status</th></tr>
+          </thead>
+          <tbody id="appts-tbody">
+            <tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">Loading...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Billing Tab -->
+    <div id="tab-billing" class="tab-content">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Invoice #</th><th>Date</th><th>Total</th><th>Amount Due</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="billing-tbody">
+            <tr><td colspan="6"><div class="empty-state"><div class="empty-state-text">Loading...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/js/utils.js"></script>
+<script>
+// Page bootstrap: auth + shared shell rendering.
+authGuard();
+document.getElementById('header-slot').outerHTML = renderHeader();
+document.getElementById('sidebar-slot').outerHTML = renderSidebar('patients');
+applyRoleVisibility();
+
+// Route parameter and page-level state.
+const params  = new URLSearchParams(window.location.search);
+const patientId = params.get('id');
+
+if (!patientId) window.location.href = 'list.html';
+
+let patientData = null;
+let visitsData = [];
+let prescriptionsData = [];
+let appointmentsData = [];
+let billingData = [];
+
+// Small presentational helpers.
+function infoRow(label, value) {
+  return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+    <span style="color:var(--text-muted);">${label}</span>
+    <span style="font-weight:500;">${value ?? '—'}</span>
+  </div>`;
+}
+
+function renderSummaryCard(value, label, note = '') {
+  return `
+    <div class="stat-card">
+      <div class="stat-card-value">${value}</div>
+      <div class="stat-card-label">${label}</div>
+      ${note ? `<div style="margin-top:6px;font-size:11px;color:var(--text-muted);">${note}</div>` : ''}
+    </div>`;
+}
+
+// Summary strip metrics (visits, diagnoses, prescriptions, invoices).
+function renderPatientSummary() {
+  const summary = document.getElementById('patient-summary');
+  if (!summary) return;
+
+  const totalDiagnoses = visitsData.reduce((count, visit) => count + ((visit.diagnoses ?? []).length), 0);
+  const activePrescriptions = prescriptionsData.filter(item => getPrescriptionStatus(item.end_time) === 'Active').length;
+  const openInvoices = billingData.filter(item => item.payment_status === 'Unpaid' || item.payment_status === 'Partial').length;
+  const latestVisit = visitsData[0]?.visit_date ? formatDate(visitsData[0].visit_date) : 'No visits yet';
+
+  summary.innerHTML = [
+    renderSummaryCard(visitsData.length, 'Visits', latestVisit),
+    renderSummaryCard(totalDiagnoses, 'Diagnoses', totalDiagnoses ? 'Across recorded medical visits' : 'No diagnoses yet'),
+    renderSummaryCard(activePrescriptions, 'Active Prescriptions', prescriptionsData.length ? `${prescriptionsData.length} total prescriptions` : 'No prescriptions yet'),
+    renderSummaryCard(openInvoices, 'Open Invoices', appointmentsData.length ? `${appointmentsData.length} appointments on record` : 'No appointments yet')
+  ].join('');
+}
+
+function renderDiagnosisChips(diagnoses) {
+  if (!diagnoses?.length) return '<span style="color:var(--text-muted);">—</span>';
+
+  return diagnoses.map(item => `
+    <span style="display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#E0F2FE;color:#0F172A;font-size:11px;margin:0 6px 6px 0;">
+      ${item}
+    </span>
+  `).join('');
+}
+
+// Data loaders by tab/section.
+async function loadPatient() {
+  try {
+    const data = await apiFetch(`/api/patients/${patientId}`);
+    patientData = data.patient;
+    const p = patientData;
+
+    document.getElementById('page-title').textContent = `${p.first_name} ${p.last_name}`;
+    document.title = `${p.first_name} ${p.last_name} — CCMS`;
+
+    document.getElementById('personal-info').innerHTML =
+      infoRow('Clinic Number', `<span style="color:var(--primary);font-weight:700;">${p.clinic_number}</span>`) +
+      infoRow('Full Name', `${p.first_name} ${p.last_name}`) +
+      infoRow('Date of Birth', `${formatDate(p.date_of_birth)} (Age ${calculateAge(p.date_of_birth)})`) +
+      infoRow('Gender', p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : 'Other') +
+      infoRow('Phone', p.phone) +
+      infoRow('Email', p.email) +
+      infoRow('Address', p.address) +
+      infoRow('Registered', formatDate(p.registered_at));
+
+    document.getElementById('medical-info').innerHTML =
+      infoRow('Blood Type', p.blood_type) +
+      infoRow('Insurance', p.insurance_provider) +
+      infoRow('Emergency Contact', p.emergency_contact) +
+      infoRow('National ID', p.national_id);
+
+  } catch (e) {
+    document.getElementById('personal-info').innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not load patient</div></div>';
+  }
+}
+
+async function loadVisits() {
+  try {
+    const data = await apiFetch(`/api/medical-visits/${patientId}`);
+    const visits = data?.visits ?? [];
+    visitsData = visits;
+    const tbody = document.getElementById('visits-tbody');
+
+    if (visits.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">No visits recorded</div></div></td></tr>';
+      renderPatientSummary();
+      return;
+    }
+
+    const role = sessionStorage.getItem('role');
+    tbody.innerHTML = visits.map(v => `
+      <tr>
+        <td>${formatDate(v.visit_date)}</td>
+        <td>${v.doctor_name ?? '—'}</td>
+        <td style="font-size:12px;line-height:1.6;">${renderDiagnosisChips(v.diagnoses ?? [])}</td>
+        <td style="font-size:12px;color:var(--text-muted);max-width:280px;line-height:1.5;">${v.notes ?? '—'}</td>
+        <td>${(role === 'admin' || role === 'receptionist')
+          ? `<button class="btn btn-outline btn-sm" onclick="openInvoiceModal(${v.visit_id})">Create Invoice</button>`
+          : ''}</td>
+      </tr>
+    `).join('');
+    renderPatientSummary();
+  } catch (e) {
+    visitsData = [];
+    renderPatientSummary();
+    document.getElementById('visits-tbody').innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">Could not load visits</div></div></td></tr>';
+  }
+}
+
+async function loadPrescriptions() {
+  try {
+    const data = await apiFetch(`/api/patients/${patientId}/prescriptions`);
+    const prescriptions = data?.prescriptions ?? [];
+    prescriptionsData = prescriptions;
+    const tbody = document.getElementById('prescriptions-tbody');
+
+    if (prescriptions.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">No prescriptions found</div></div></td></tr>';
+      renderPatientSummary();
+      return;
+    }
+
+    tbody.innerHTML = prescriptions.map(pr => `
+      <tr>
+        <td style="font-weight:500;">${pr.drug_name}</td>
+        <td>${pr.dosage ?? '—'}</td>
+        <td>${pr.duration ?? '—'}</td>
+        <td>${formatDate(pr.visit_date)}</td>
+        <td>${renderBadge(getPrescriptionStatus(pr.end_time))}</td>
+      </tr>
+    `).join('');
+    renderPatientSummary();
+  } catch (e) {
+    prescriptionsData = [];
+    renderPatientSummary();
+    document.getElementById('prescriptions-tbody').innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">Could not load prescriptions</div></div></td></tr>';
+  }
+}
+
+async function loadAppointments() {
+  try {
+    const data = await apiFetch(`/api/appointments?patient_id=${patientId}`);
+    const appointments = data?.appointments ?? [];
+    appointmentsData = appointments;
+    const tbody = document.getElementById('appts-tbody');
+
+    if (appointments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">No appointments found</div></div></td></tr>';
+      renderPatientSummary();
+      return;
+    }
+
+    tbody.innerHTML = appointments.map(a => `
+      <tr>
+        <td>${formatDate(a.appointment_datetime)}
+          <span style="color:var(--text-muted);font-size:12px;"> ${formatTime(a.appointment_datetime)}</span>
+        </td>
+        <td>${a.doctor_name ?? '—'}</td>
+        <td style="font-size:12px;">${a.reason ?? '—'}</td>
+        <td>${renderBadge(a.status)}</td>
+      </tr>
+    `).join('');
+    renderPatientSummary();
+  } catch (e) {
+    appointmentsData = [];
+    renderPatientSummary();
+    document.getElementById('appts-tbody').innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">Could not load appointments</div></div></td></tr>';
+  }
+}
+
+async function loadBilling() {
+  try {
+    const data = await apiFetch(`/api/invoices?patient_id=${patientId}`);
+    const invoices = data?.invoices ?? [];
+    billingData = invoices;
+    const tbody = document.getElementById('billing-tbody');
+
+    if (invoices.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-text">No invoices found</div></div></td></tr>';
+      renderPatientSummary();
+      return;
+    }
+
+    tbody.innerHTML = invoices.map(inv => `
+      <tr>
+        <td style="font-weight:600;color:var(--primary);">#${inv.invoice_id}</td>
+        <td>${formatDate(inv.invoice_date)}</td>
+        <td>${formatCurrency(inv.total_amount)}</td>
+        <td>${formatCurrency(inv.amount_due)}</td>
+        <td>${renderBadge(inv.payment_status)}</td>
+        <td><a href="/billing/invoice.html?id=${inv.invoice_id}" class="btn btn-outline btn-sm">View</a></td>
+      </tr>
+    `).join('');
+    renderPatientSummary();
+  } catch (e) {
+    billingData = [];
+    renderPatientSummary();
+    document.getElementById('billing-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-text">Could not load billing</div></div></td></tr>';
+  }
+}
+
+// Tabs and edit modal actions.
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function openEditModal() {
+  if (!patientData) return;
+  const p = patientData;
+  document.getElementById('edit-phone').value       = p.phone ?? '';
+  document.getElementById('edit-email').value       = p.email ?? '';
+  document.getElementById('edit-blood-type').value  = p.blood_type ?? '';
+  document.getElementById('edit-insurance').value   = p.insurance_provider ?? '';
+  document.getElementById('edit-address').value     = p.address ?? '';
+  document.getElementById('edit-emergency').value   = p.emergency_contact ?? '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+async function savePatient() {
+  const updates = {
+    phone:              document.getElementById('edit-phone').value.trim(),
+    email:              document.getElementById('edit-email').value.trim(),
+    blood_type:         document.getElementById('edit-blood-type').value,
+    insurance_provider: document.getElementById('edit-insurance').value.trim(),
+    address:            document.getElementById('edit-address').value.trim(),
+    emergency_contact:  document.getElementById('edit-emergency').value.trim()
+  };
+
+  try {
+    await apiFetch(`/api/patients/${patientId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates)
+    });
+    showToast('Patient updated successfully', 'success');
+    closeEditModal();
+    loadPatient();
+  } catch (e) {
+    showToast(e.message || 'Failed to update patient', 'error');
+  }
+}
+
+// Load all data on page init
+loadPatient();
+loadVisits();
+loadPrescriptions();
+loadAppointments();
+loadBilling();
+
+// ── Invoice Modal (admin/receptionist) ──────────────────────────────────────
+
+// Invoice-from-visit workflow state.
+let invoiceVisitId   = null;
+let invoicePatientId = null;
+let allServices      = [];
+
+// Invoice modal lifecycle and line-item helpers.
+async function openInvoiceModal(visitId) {
+  invoiceVisitId = visitId;
+  invoicePatientId = patientId;
+
+  // Reset
+  document.getElementById('inv-doctor').textContent     = '—';
+  document.getElementById('inv-visit-date').textContent = '—';
+  document.getElementById('inv-notes').textContent      = '—';
+  document.getElementById('inv-diagnoses').textContent  = '—';
+  document.getElementById('inv-items-tbody').innerHTML  = '';
+  document.getElementById('inv-discount').value         = '0';
+  document.getElementById('inv-total').textContent      = 'SSP 0.00';
+
+  document.getElementById('invoice-modal').classList.add('open');
+
+  try {
+    const [visitRes, svcRes] = await Promise.all([
+      apiFetch(`/api/visits/${visitId}/summary`),
+      allServices.length ? Promise.resolve({ services: allServices }) : apiFetch('/api/services')
+    ]);
+
+    const v = visitRes.visit;
+    allServices = svcRes.services ?? [];
+
+    document.getElementById('inv-doctor').textContent     = v.doctor_name ?? '—';
+    document.getElementById('inv-visit-date').textContent = formatDate(v.visit_date);
+    document.getElementById('inv-notes').textContent      = v.notes || '—';
+    document.getElementById('inv-diagnoses').textContent  =
+      v.diagnoses?.length ? v.diagnoses.join('; ') : '—';
+
+    // Pre-load each prescription as a line item with blank price
+    (v.prescriptions ?? []).forEach(rx => {
+      addInvoiceItemRow(`${rx.drug_name}${rx.dosage ? ' — ' + rx.dosage : ''}${rx.duration ? ' (' + rx.duration + ')' : ''}`, 1, '');
+    });
+
+    // Always add one blank service row for the consultation fee etc.
+    addInvoiceServiceRow();
+
+  } catch (e) {
+    showToast('Could not load visit details', 'error');
+  }
+}
+
+function closeInvoiceModal() {
+  document.getElementById('invoice-modal').classList.remove('open');
+  invoiceVisitId   = null;
+}
+
+function addInvoiceItemRow(name, qty, price) {
+  const tbody = document.getElementById('inv-items-tbody');
+  const tr    = document.createElement('tr');
+
+  // Build service options
+  const opts = allServices.map(s =>
+    `<option value="${s.service_id}" data-price="${s.unit_price}">${s.service_name} (SSP ${parseFloat(s.unit_price).toFixed(2)})</option>`
+  ).join('');
+
+  tr.innerHTML = `
+    <td style="padding:6px 4px;">
+      <input type="text" class="form-control inv-item-name" value="${name ?? ''}"
+             placeholder="Item / drug name" style="font-size:12px;">
+      <select class="form-control inv-service-pick" style="font-size:11px;margin-top:4px;color:var(--text-muted);"
+              onchange="pickService(this)">
+        <option value="">— or pick from catalogue —</option>
+        ${opts}
+      </select>
+    </td>
+    <td style="padding:6px 4px;text-align:right;">
+      <input type="number" class="form-control inv-item-qty" value="${qty ?? 1}" min="1"
+             style="width:54px;font-size:12px;text-align:right;" oninput="updateInvTotal()">
+    </td>
+    <td style="padding:6px 4px;text-align:right;">
+      <input type="number" class="form-control inv-item-price" value="${price ?? ''}" min="0" step="0.01"
+             placeholder="0.00" style="width:90px;font-size:12px;text-align:right;" oninput="updateInvTotal()">
+    </td>
+    <td style="padding:6px 4px;text-align:center;">
+      <button type="button" onclick="this.closest('tr').remove();updateInvTotal();"
+              style="background:none;border:none;color:var(--danger);font-size:15px;cursor:pointer;line-height:1;">×</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+  updateInvTotal();
+}
+
+function addInvoiceServiceRow() {
+  addInvoiceItemRow('', 1, '');
+}
+
+function pickService(select) {
+  const opt = select.options[select.selectedIndex];
+  if (!opt.value) return;
+  const row   = select.closest('tr');
+  const price = parseFloat(opt.dataset.price) || 0;
+  row.querySelector('.inv-item-name').value  = opt.text.split(' (SSP')[0];
+  row.querySelector('.inv-item-price').value = price.toFixed(2);
+  select.value = '';
+  updateInvTotal();
+}
+
+function updateInvTotal() {
+  let subtotal = 0;
+  document.querySelectorAll('#inv-items-tbody tr').forEach(tr => {
+    const qty   = parseFloat(tr.querySelector('.inv-item-qty')?.value)   || 0;
+    const price = parseFloat(tr.querySelector('.inv-item-price')?.value) || 0;
+    subtotal += qty * price;
+  });
+  const discount = parseFloat(document.getElementById('inv-discount').value) || 0;
+  const total    = Math.max(0, subtotal - discount);
+  document.getElementById('inv-total').textContent = `SSP ${total.toFixed(2)}`;
+}
+
+async function submitInvoice() {
+  const rows = [...document.querySelectorAll('#inv-items-tbody tr')];
+  const items = [];
+
+  for (const tr of rows) {
+    const name  = tr.querySelector('.inv-item-name')?.value.trim()  || '';
+    const qty   = parseInt(tr.querySelector('.inv-item-qty')?.value)   || 1;
+    const price = parseFloat(tr.querySelector('.inv-item-price')?.value) || 0;
+    if (!name || price <= 0) continue;
+    items.push({ service_name: name, quantity: qty, unit_price: price });
+  }
+
+  if (!items.length) {
+    showToast('Add at least one item with a price', 'error');
+    return;
+  }
+
+  const discount = parseFloat(document.getElementById('inv-discount').value) || 0;
+
+  try {
+    const res = await apiFetch('/api/invoices/from-visit', {
+      method: 'POST',
+      body: JSON.stringify({
+        patient_id:     parseInt(invoicePatientId),
+        visit_id:       invoiceVisitId,
+        discount,
+        items
+      })
+    });
+    closeInvoiceModal();
+    showToast('Invoice created successfully', 'success');
+    // Navigate to the new invoice
+    window.location.href = `/billing/invoice.html?id=${res.invoice_id}`;
+  } catch (e) {
+    showToast(e.message || 'Failed to create invoice', 'error');
+  }
+}
+
+// Open edit modal if ?edit=true in URL
+if (params.get('edit') === 'true') openEditModal();
+</script>
+</body>
+</html>

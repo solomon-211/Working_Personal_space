@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — CCMS</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<!-- Global Loading Spinner -->
+<div id="global-spinner" class="global-spinner-overlay">
+  <span class="spinner spinner-dark spinner-lg"></span>
+</div>
+
+<!-- Main Layout Container -->
+<div class="layout">
+  <!-- Header will be injected here by JavaScript -->
+  <div id="header-slot"></div>
+  
+  <!-- Sidebar will be injected here by JavaScript -->
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content Area -->
+  <main class="main">
+    <!-- Page Header with Title and Actions -->
+    <div class="page-header">
+      <h1 class="page-title" id="dash-title">Dashboard</h1>
+      <!-- Admin-only quick link to reports -->
+      <div data-role="admin">
+        <a href="/reports/index.html" class="btn btn-outline btn-sm">Reports</a>
+      </div>
+    </div>
+
+    <!-- Statistics Cards Grid -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-value" id="stat-patients">—</div>
+        <div class="stat-card-label">Total Patients</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value" id="stat-appointments">—</div>
+        <div class="stat-card-label">Upcoming Appointments</div>
+      </div>
+      <div class="stat-card" data-role="admin,receptionist">
+        <div class="stat-card-value" id="stat-revenue">—</div>
+        <div class="stat-card-label">Total Revenue</div>
+      </div>
+      <div class="stat-card" data-role="admin,receptionist">
+        <div class="stat-card-value" id="stat-pending">—</div>
+        <div class="stat-card-label">Outstanding Balance</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-title">Payment Overview</div>
+      <div id="payment-overview">
+        <div class="empty-state"><div class="empty-state-text">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Two Column Layout for Appointments and Patients -->
+    <div class="dashboard-main-grid">
+      <!-- Today's Appointments Section -->
+      <div class="card">
+        <div class="card-title">Upcoming Appointments</div>
+        <div id="today-appointments">
+          <div class="empty-state">
+            <div class="empty-state-text">Loading...</div>
+          </div>
+        </div>
+        <div class="section-action">
+          <a href="/appointments/index.html" class="btn btn-outline btn-sm" data-role="admin,receptionist">
+            View All
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent Patients Section -->
+      <div class="card">
+        <div class="card-title" id="right-panel-title">Recent Patients</div>
+        <div id="recent-patients">
+          <div class="empty-state">
+            <div class="empty-state-text">Loading...</div>
+          </div>
+        </div>
+        <div class="section-action">
+          <a href="/patients/register.html" class="btn btn-primary btn-sm" data-role="admin,receptionist">
+            + Register Patient
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/utils.js"></script>
+<script>
+  // Page bootstrap: access checks and shared shell rendering.
+  authGuard();
+  checkSessionTimeout();
+
+  // Inject header and sidebar into the page
+  document.getElementById('header-slot').outerHTML = renderHeader();
+  document.getElementById('sidebar-slot').outerHTML = renderSidebar('dashboard');
+  
+  // Apply role-based visibility to elements
+  applyRoleVisibility();
+
+  // Session-backed user context used for role-aware rendering.
+  const role = sessionStorage.getItem('role');
+  const name = sessionStorage.getItem('name');
+  
+  // Personalize the dashboard title
+  document.getElementById('dash-title').textContent = `Welcome, ${name}`;
+
+  // Small data guards/helpers for rendering calculations.
+  function safeNumber(value, fallback = 0) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  }
+
+  function sortByDateDesc(items, key) {
+    return [...items].sort((left, right) => {
+      const leftTime = new Date(left?.[key] ?? 0).getTime();
+      const rightTime = new Date(right?.[key] ?? 0).getTime();
+      return rightTime - leftTime;
+    });
+  }
+
+  // Build billing summary values from invoices already fetched by the page.
+  function buildInvoiceSummary(invoices) {
+    return invoices.reduce((summary, invoice) => {
+      const status = invoice.payment_status ?? '';
+      const amountDue = safeNumber(invoice.amount_due ?? invoice.total_amount, 0);
+
+      if (status === 'Unpaid') {
+        summary.unpaidCount += 1;
+        summary.pendingAmount += amountDue;
+      } else if (status === 'Partial') {
+        summary.partialCount += 1;
+        summary.pendingAmount += amountDue;
+      } else if (status === 'Paid') {
+        summary.paidCount += 1;
+        summary.paidAmount += amountDue;
+      }
+
+      return summary;
+    }, {
+      unpaidCount: 0,
+      partialCount: 0,
+      paidCount: 0,
+      pendingAmount: 0,
+      paidAmount: 0
+    });
+  }
+
+  // Panel renderers
+  function renderPaymentOverview(summary) {
+    const element = document.getElementById('payment-overview');
+    if (!element) return;
+
+    element.innerHTML = `
+      <div style="display:grid;gap:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Outstanding</div>
+            <div style="font-size:20px;font-weight:700;margin-top:6px;">${formatCurrency(summary.pendingAmount)}</div>
+          </div>
+          <div style="padding:14px;border:1px solid var(--border);border-radius:12px;background:#F0FDF4;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Total Collected</div>
+            <div style="font-size:20px;font-weight:700;margin-top:6px;color:#16A34A;">${formatCurrency(summary.paidAmount)}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+          <div style="padding:12px;border:1px solid var(--border);border-radius:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Unpaid</div>
+            <div style="font-size:18px;font-weight:700;">${summary.unpaidCount}</div>
+          </div>
+          <div style="padding:12px;border:1px solid var(--border);border-radius:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Partial</div>
+            <div style="font-size:18px;font-weight:700;">${summary.partialCount}</div>
+          </div>
+          <div style="padding:12px;border:1px solid var(--border);border-radius:10px;">
+            <div style="font-size:11px;color:var(--text-muted);">Paid</div>
+            <div style="font-size:18px;font-weight:700;color:#16A34A;">${summary.paidCount}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderTodayAppointments(appointmentsList) {
+    const element = document.getElementById('today-appointments');
+
+    if (appointmentsList.length === 0) {
+      element.innerHTML = '<div class="empty-state"><div class="empty-state-text">No upcoming appointments</div></div>';
+      return;
+    }
+
+    element.innerHTML = `
+      <table style="width:100%">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Patient</th>
+            <th>Doctor</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${appointmentsList.map(appointment => `
+            <tr>
+              <td>${formatTime(appointment.appointment_datetime)}</td>
+              <td>${appointment.first_name ?? ''} ${appointment.last_name ?? ''}</td>
+              <td>${appointment.doctor_name ?? '—'}</td>
+              <td>${renderBadge(appointment.status)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function renderRecentPatients(patients) {
+    const element = document.getElementById('recent-patients');
+    const recentPatients = sortByDateDesc(patients, 'registered_at').slice(0, 5);
+
+    if (recentPatients.length === 0) {
+      element.innerHTML = '<div class="empty-state"><div class="empty-state-text">No patients yet</div></div>';
+      return;
+    }
+
+    element.innerHTML = recentPatients.map(patient => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:12px;">
+        <div>
+          <div style="font-weight:600;font-size:13px;">${patient.first_name} ${patient.last_name}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${patient.clinic_number} · Registered ${formatDate(patient.registered_at)}</div>
+        </div>
+        <a href="/patients/profile.html?id=${patient.patient_id}" class="btn btn-outline btn-sm">View</a>
+      </div>
+    `).join('');
+  }
+
+  // Main data loader for dashboard cards and panels.
+  async function loadDashboard() {
+    const [appointmentsResult, patientsResult, invoicesResult] = await Promise.allSettled([
+      apiFetch('/api/appointments/today'),
+      apiFetch('/api/patients'),
+      apiFetch('/api/invoices')
+    ]);
+
+    const appointmentsList = appointmentsResult.status === 'fulfilled' ? (appointmentsResult.value?.appointments ?? []) : [];
+    const patients = patientsResult.status === 'fulfilled' ? (patientsResult.value?.patients ?? []) : [];
+    const invoices = invoicesResult.status === 'fulfilled' ? (invoicesResult.value?.invoices ?? []) : [];
+
+    const invoiceSummary = buildInvoiceSummary(invoices);
+
+    document.getElementById('stat-patients').textContent = patients.length;
+    document.getElementById('stat-appointments').textContent = appointmentsList.length;
+    document.getElementById('stat-revenue').textContent = formatCurrency(invoiceSummary.paidAmount);
+    document.getElementById('stat-pending').textContent = formatCurrency(invoiceSummary.pendingAmount);
+
+    renderTodayAppointments(appointmentsList);
+    renderRecentPatients(patients);
+    renderPaymentOverview(invoiceSummary);
+
+    if (appointmentsResult.status !== 'fulfilled')
+      document.getElementById('today-appointments').innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not load appointments</div></div>';
+    if (patientsResult.status !== 'fulfilled')
+      document.getElementById('recent-patients').innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not load patients</div></div>';
+    if (invoicesResult.status !== 'fulfilled')
+      document.getElementById('payment-overview').innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not load payment overview</div></div>';
+  }
+
+  // Initial render
+  loadDashboard();
+</script>
+
+</body>
+</html>

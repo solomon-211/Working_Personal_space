@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — CCMS</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card">
+    <!-- Logo and Branding -->
+    <div class="login-logo">
+      <!-- HB Logo with blue background -->
+      <div style="width:80px;height:80px;background:#2563EB;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <span style="font-size:32px;font-weight:700;color:white;">HB</span>
+      </div>
+      <h1>HealthHub Bridge</h1>
+      <p>Community Clinic Management System</p>
+    </div>
+
+    <!-- Error Message Display -->
+    <div id="login-error" style="display:none;background:#FEE2E2;color:#B91C1C;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;"></div>
+
+    <!-- Username Input -->
+    <div class="form-group">
+      <label class="form-label">Username <span class="required">*</span></label>
+      <input type="text" id="username" class="form-control" placeholder="e.g. amina.lado" autofocus>
+      <div class="form-error" id="username-error">Username is required</div>
+    </div>
+
+    <!-- Password Input with Show/Hide Toggle -->
+    <div class="form-group">
+      <label class="form-label">Password <span class="required">*</span></label>
+      <div style="position:relative">
+        <input type="password" id="password" class="form-control" placeholder="Enter your password" style="padding-right:40px">
+        <button onclick="togglePassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;" id="toggle-pwd">Show</button>
+      </div>
+      <div class="form-error" id="password-error">Password is required</div>
+    </div>
+
+    <!-- Remember Me and Forgot Password -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="remember"> Remember me
+      </label>
+      <a href="#" style="font-size:13px;color:var(--primary);text-decoration:none;">Forgot password?</a>
+    </div>
+
+    <!-- Login Button -->
+    <button class="btn btn-primary" id="login-btn" onclick="handleLogin()" style="width:100%;justify-content:center;padding:10px;">Login</button>
+  </div>
+</div>
+
+<script src="../assets/js/utils.js"></script>
+<script>
+  // Redirect already-authenticated users straight to the dashboard.
+  if (sessionStorage.getItem('role')) {
+    window.location.href = '/dashboard/index.html';
+  }
+
+  // Password visibility toggle in the login form.
+  function togglePassword() {
+    const pwd = document.getElementById('password');
+    const btn = document.getElementById('toggle-pwd');
+    
+    if (pwd.type === 'password') {
+      pwd.type = 'text';
+      btn.textContent = 'Hide';
+    } else {
+      pwd.type = 'password';
+      btn.textContent = 'Show';
+    }
+  }
+
+  // Main login workflow: validate -> authenticate -> persist session -> redirect.
+  async function handleLogin() {
+    // Read form values
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    // Reset previous validation and server error states
+    document.getElementById('username-error').classList.remove('show');
+    document.getElementById('password-error').classList.remove('show');
+    document.getElementById('login-error').style.display = 'none';
+
+    // Frontend validation
+    let isValid = true;
+    
+    if (!username) {
+      document.getElementById('username-error').classList.add('show');
+      document.getElementById('username').classList.add('error');
+      isValid = false;
+    }
+    
+    if (!password) {
+      document.getElementById('password-error').classList.add('show');
+      document.getElementById('password').classList.add('error');
+      isValid = false;
+    }
+    
+    if (!isValid) return;
+
+    // Loading state while request is in progress
+    const button = document.getElementById('login-btn');
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span> Logging in...';
+
+    try {
+      // Authenticate against backend
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+
+      // Backend rejected credentials
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid credentials');
+      }
+
+      // Persist session information for role-based navigation
+      sessionStorage.setItem('role', data.user.role);
+      sessionStorage.setItem('name', data.user.username);
+      sessionStorage.setItem('login_time', Date.now());
+      if (data.user.doctor_id) sessionStorage.setItem('doctor_id', data.user.doctor_id);
+
+      // Successful login: move into app
+      window.location.href = '/dashboard/index.html';
+      
+    } catch (error) {
+      // Surface API/network error to user
+      const errorBox = document.getElementById('login-error');
+      errorBox.textContent = error.message;
+      errorBox.style.display = 'block';
+      
+      // Restore button state
+      button.disabled = false;
+      button.textContent = 'Login';
+    }
+  }
+
+  // Enter key convenience submit
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Enter') handleLogin();
+  });
+</script>
+
+</body>
+</html>
