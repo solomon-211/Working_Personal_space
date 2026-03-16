@@ -14,16 +14,43 @@ let allDoctors = [];
 let currentPage = 1;
 const perPage = 10;
 let currentWeekOffset = 0;
+let knownStatuses = {};   // appointment_id → last known status
 
 const doctorColors = ['#DBEAFE', '#DCFCE7', '#FEF3C7', '#FCE7F3', '#EDE9FE'];
 
 async function loadAppointments() {
   try {
     const data = await apiFetch('/api/appointments');
-    allAppointments = data?.appointments ?? [];
+    const incoming = data?.appointments ?? [];
+
+    // Find IDs that just flipped to Completed since last load
+    const newlyCompleted = new Set(
+      incoming
+        .filter(a => a.status === 'Completed' && knownStatuses[a.appointment_id] === 'Scheduled')
+        .map(a => a.appointment_id)
+    );
+
+    // Update known statuses
+    incoming.forEach(a => { knownStatuses[a.appointment_id] = a.status; });
+
+    allAppointments = incoming;
     filteredAppointments = [...allAppointments];
     currentPage = 1;
     renderTable();
+
+    // Flash rows that just completed (visible to admin/receptionist)
+    if (newlyCompleted.size > 0 && role !== 'doctor') {
+      newlyCompleted.forEach(id => {
+        const rows = document.querySelectorAll('#appointments-tbody tr');
+        rows.forEach(row => {
+          // match by appointment_id embedded in the View button onclick
+          if (row.innerHTML.includes(`openViewModal(${id})`)) {
+            row.classList.add('row-just-completed');
+            setTimeout(() => row.classList.remove('row-just-completed'), 2100);
+          }
+        });
+      });
+    }
   } catch (e) {
     document.getElementById('appointments-tbody').innerHTML = `
       <tr><td colspan="6">
@@ -584,6 +611,7 @@ function closeViewModal() {
 
 loadDoctorsForBooking();
 loadAppointments();
+setInterval(loadAppointments, 30_000);
 
 let consultationAppointment = null;
 
@@ -649,6 +677,44 @@ function addPrescriptionRow() {
   list.appendChild(row);
 }
 
+function closeSummaryModal() {
+  document.getElementById('summary-modal').classList.remove('open');
+}
+
+function openSummaryModal(appt, diagnoses, prescriptions, visitDate) {
+  const body = document.getElementById('summary-body');
+
+  const diagHtml = diagnoses.length
+    ? diagnoses.map(d => `<div class="summary-item">${d}</div>`).join('')
+    : `<div class="summary-item" style="color:var(--text-muted);">None recorded</div>`;
+
+  const rxHtml = prescriptions.length
+    ? prescriptions.map(rx => `
+        <div class="summary-rx">
+          <div class="summary-rx-drug">${rx.drug_name}</div>
+          <div class="summary-rx-detail">${[rx.dosage, rx.duration].filter(Boolean).join(' — ')}</div>
+        </div>`).join('')
+    : `<div class="summary-item" style="color:var(--text-muted);">None prescribed</div>`;
+
+  body.innerHTML = `
+    <div class="summary-patient-banner">
+      <div><span style="color:var(--text-muted);">Patient: </span><strong>${appt.first_name ?? ''} ${appt.last_name ?? ''}</strong></div>
+      <div><span style="color:var(--text-muted);">Clinic #: </span><strong>${appt.clinic_number ?? '—'}</strong></div>
+      <div><span style="color:var(--text-muted);">Date: </span><strong>${visitDate}</strong></div>
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Diagnoses</div>
+      ${diagHtml}
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Prescriptions</div>
+      ${rxHtml}
+    </div>
+  `;
+  document.getElementById('summary-modal').classList.add('open');
+}
+
+
 async function submitConsultation() {
   const appt = consultationAppointment;
   if (!appt) return;
@@ -673,7 +739,6 @@ async function submitConsultation() {
     : parsedDt.toISOString().split('T')[0];
 
   try {
-    // Step 1: create the medical visit
     const visitData = await apiFetch('/api/medical-visits', {
       method: 'POST',
       body: JSON.stringify({
@@ -686,7 +751,6 @@ async function submitConsultation() {
     });
     const visitId = visitData?.visit_id;
 
-    // Step 2: save diagnoses — backend expects field 'description'
     for (const description of diagnoses) {
       await apiFetch('/api/diagnoses', {
         method: 'POST',
@@ -694,7 +758,6 @@ async function submitConsultation() {
       });
     }
 
-    // Step 3: save prescriptions — backend requires visit_id + drug_name only
     for (const rx of prescriptions) {
       await apiFetch('/api/prescriptions', {
         method: 'POST',
@@ -707,14 +770,13 @@ async function submitConsultation() {
       });
     }
 
-    // Step 4: mark appointment as completed
     await apiFetch(`/api/appointments/${appt.appointment_id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'Completed' })
     });
 
     closeConsultationModal();
-    showToast('Consultation saved — appointment completed', 'success');
+    openSummaryModal(appt, diagnoses, prescriptions, visitDate);
     loadAppointments();
   } catch (e) {
     showToast(e.message || 'Failed to save consultation', 'error');

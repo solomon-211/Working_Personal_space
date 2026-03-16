@@ -126,6 +126,23 @@
   </div>
 </div>
 
+<!-- Post-consultation summary modal — shown after a consultation is saved -->
+<div class="modal-overlay" id="summary-modal">
+  <div class="modal modal-520">
+    <div class="modal-header" style="background:#F0FDF4;border-bottom:1px solid #BBF7D0;">
+      <h3 class="modal-title" style="color:#15803D;">Consultation Complete</h3>
+      <button class="modal-close" onclick="closeSummaryModal()">X</button>
+    </div>
+    <div id="summary-body" style="padding:20px 24px;">
+      <!-- filled dynamically -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="window.print()">Print</button>
+      <button class="btn btn-primary" onclick="closeSummaryModal()">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Booking modal — 3-step wizard: patient search → doctor & date → time slot & reason -->
 <div class="modal-overlay" id="booking-modal">
   <div class="modal modal-540">
@@ -244,7 +261,7 @@
     <!-- Search bar — filterAppointments() runs on every keystroke -->
     <div class="mb-16">
       <div class="apt-search-wrap">
-        <span class="apt-search-icon">Search</span>
+        <span class="apt-search-icon"></span>
         <input type="text" id="apt-search" placeholder="Search patient, doctor, or reason..."
           class="apt-search-input"
           oninput="filterAppointments(this.value)"

@@ -29,11 +29,21 @@ INSERT INTO `doctor_schedule` VALUES
 
 -- appointments
 INSERT INTO `appointments` VALUES
-(1, 1, 1, '2025-06-10 09:00:00', 'Persistent fever and headache',     'Completed', NOW()),
-(2, 2, 2, '2025-06-11 10:30:00', 'Child routine checkup',             'Completed', NOW()),
-(3, 3, 3, '2025-06-12 08:30:00', 'Hypertension follow-up',            'Completed', NOW()),
-(4, 4, 4, '2025-06-13 11:00:00', 'Antenatal care visit',              'Scheduled', NOW()),
-(5, 5, 1, '2025-06-14 09:00:00', 'Chest pain and shortness of breath','No-show',   NOW());
+(1,  1, 1, '2025-06-10 09:00:00', 'Persistent fever and headache',          'Completed', NOW()),
+(2,  2, 2, '2025-06-11 10:30:00', 'Child routine checkup',                  'Completed', NOW()),
+(3,  3, 3, '2025-06-12 08:30:00', 'Hypertension follow-up',                 'Completed', NOW()),
+(4,  4, 4, '2025-06-13 11:00:00', 'Antenatal care visit',                   'Completed', NOW()),
+(5,  5, 1, '2025-06-14 09:00:00', 'Chest pain and shortness of breath',     'No-show',   NOW()),
+(6,  1, 1, CURDATE() + INTERVAL 1 DAY + INTERVAL 9 HOUR,  'Follow-up on malaria treatment',         'Scheduled', NOW()),
+(7,  2, 2, CURDATE() + INTERVAL 1 DAY + INTERVAL 10 HOUR, 'Child vaccination — 18 months',           'Scheduled', NOW()),
+(8,  3, 3, CURDATE() + INTERVAL 2 DAY + INTERVAL 8 HOUR,  'Blood pressure review',                  'Scheduled', NOW()),
+(9,  4, 4, CURDATE() + INTERVAL 2 DAY + INTERVAL 11 HOUR, 'Antenatal care — 32 weeks',               'Scheduled', NOW()),
+(10, 1, 3, CURDATE() + INTERVAL 3 DAY + INTERVAL 9 HOUR,  'General fatigue and dizziness',          'Scheduled', NOW()),
+(11, 3, 1, CURDATE() + INTERVAL 3 DAY + INTERVAL 10 HOUR, 'Routine checkup',                        'Scheduled', NOW()),
+(12, 5, 3, CURDATE() + INTERVAL 4 DAY + INTERVAL 8 HOUR,  'Diabetes management follow-up',          'Scheduled', NOW()),
+(13, 2, 4, CURDATE() + INTERVAL 4 DAY + INTERVAL 11 HOUR, 'Postpartum checkup',                     'Scheduled', NOW()),
+(14, 4, 1, CURDATE() + INTERVAL 5 DAY + INTERVAL 9 HOUR,  'Skin rash and itching',                  'Scheduled', NOW()),
+(15, 1, 2, CURDATE() + INTERVAL 5 DAY + INTERVAL 10 HOUR, 'Child growth assessment',                'Scheduled', NOW());
 
 -- medical_visits
 INSERT INTO `medical_visits` VALUES
@@ -92,12 +102,13 @@ INSERT INTO `payments` VALUES
 (5, 4, '2025-06-15', 200.00, 'Mobile',    'MTN-SS-443', 'Amina Lado');
 
 -- users
+-- admin.juba: admin123 | j.lual, g.akuei: doctor123 | amina.lado, john.ladu: recep123
 INSERT INTO `users` VALUES
-(1, 'admin.juba',    'e3b0c44298fc1c149afb', 'admin',        'System Administrator', NOW()),
-(2, 'j.lual',        'a87ff679a2f3e71d9181', 'doctor',       'Dr. James Lual',       NOW()),
-(3, 'g.akuei',       'eccbc87e4b5ce2fe2830', 'doctor',       'Dr. Grace Akuei',      NOW()),
-(4, 'amina.lado',    'c4ca4238a0b923820dcc', 'receptionist', 'Amina Lado',           NOW()),
-(5, 'john.ladu',     'c81e728d9d4c2f636f06', 'receptionist', 'John Ladu',            NOW());
+(1, 'admin.juba',    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin',        'System Administrator', NOW()),
+(2, 'j.lual',        'f348d5628621f3d8f59c8cabda0f8eb0aa7e0514a90be7571020b1336f26c113', 'doctor',       'Dr. James Lual',       NOW()),
+(3, 'g.akuei',       'f348d5628621f3d8f59c8cabda0f8eb0aa7e0514a90be7571020b1336f26c113', 'doctor',       'Dr. Grace Akuei',      NOW()),
+(4, 'amina.lado',    '5d37ed314cf2b5c8462b52b12cd512e2ac4a180e75598da4f12bfb0dea6d0a67', 'receptionist', 'Amina Lado',           NOW()),
+(5, 'john.ladu',     '5d37ed314cf2b5c8462b52b12cd512e2ac4a180e75598da4f12bfb0dea6d0a67', 'receptionist', 'John Ladu',            NOW());
 
 -- reports
 INSERT INTO `reports` VALUES

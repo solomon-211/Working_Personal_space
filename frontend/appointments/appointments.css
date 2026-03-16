@@ -270,9 +270,72 @@
   line-height: 1;
 }
 
-.pagination-controls {
+.summary-section {
+  margin-bottom: 16px;
+}
+
+.summary-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.summary-patient-banner {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
   display: flex;
-  gap: 4px;
+  gap: 24px;
+  font-size: 13px;
+}
+
+.summary-item {
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.summary-rx {
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.summary-rx-drug {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.summary-rx-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+@media print {
+  .modal-overlay { position: static; background: none; }
+  .modal { box-shadow: none; max-width: 100%; }
+  .modal-header button, .modal-footer { display: none; }
+}
+
+@keyframes row-flash {
+  0%   { background: #DCFCE7; }
+  70%  { background: #DCFCE7; }
+  100% { background: transparent; }
+}
+
+.row-just-completed td {
+  animation: row-flash 2s ease forwards;
 }
 
 .calendar-header-row {

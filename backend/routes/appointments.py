@@ -24,6 +24,7 @@ def get_appointments():
     # Build the query dynamically based on which filters were provided
     query  = """
         SELECT a.appointment_id, a.appointment_datetime, a.reason, a.status,
+               a.patient_id, a.doctor_id,
                p.first_name, p.last_name, p.clinic_number,
                d.full_name AS doctor_name
         FROM appointments a
@@ -73,6 +74,7 @@ def get_today_appointments():
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT a.appointment_id, a.appointment_datetime, a.reason, a.status,
+                   a.patient_id, a.doctor_id,
                    p.first_name, p.last_name, p.clinic_number,
                    d.full_name AS doctor_name
             FROM appointments a
@@ -198,6 +200,16 @@ def book_appointment():
     return jsonify({'id': new_id, 'message': 'Appointment booked successfully'}), 201
 
 
+# Valid status transitions — only these moves are allowed
+# Scheduled  → Completed, Cancelled, No-show
+# Completed  → (terminal, no further transitions)
+# Cancelled  → (terminal, no further transitions)
+# No-show    → (terminal, no further transitions)
+ALLOWED_TRANSITIONS = {
+    'Scheduled': {'Completed', 'Cancelled', 'No-show'},
+}
+
+
 # route to update appointment status (e.g. mark as Completed, Cancelled, No-show)
 @appointments_bp.route('/appointments/<int:appointment_id>', methods=['PATCH'])
 @login_required
@@ -211,19 +223,45 @@ def update_appointment_status(appointment_id):
 
     try:
         conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Fetch current status before updating
+        cursor.execute(
+            "SELECT status FROM appointments WHERE appointment_id = %s",
+            (appointment_id,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Appointment not found'}), 404
+
+        current_status = row['status']
+
+        # Block transitions from terminal statuses
+        if current_status not in ALLOWED_TRANSITIONS:
+            conn.close()
+            return jsonify({
+                'error': f'Cannot update a {current_status} appointment. '
+                         f'Only Scheduled appointments can be updated.'
+            }), 409
+
+        # Block invalid transitions from Scheduled
+        if new_status not in ALLOWED_TRANSITIONS[current_status]:
+            conn.close()
+            return jsonify({
+                'error': f'Invalid transition: {current_status} → {new_status}.'
+            }), 409
+
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE appointments SET status = %s WHERE appointment_id = %s",
             (new_status, appointment_id)
         )
         conn.commit()
-        affected = cursor.rowcount
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Update failed.', 'details': str(e)}), 503
-
-    if affected == 0:
-        return jsonify({'error': 'Appointment not found'}), 404
 
     cache_invalidate('appointments')
     return jsonify({'message': f'Appointment marked as {new_status}'}), 200
