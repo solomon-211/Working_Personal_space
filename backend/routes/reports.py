@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from typing import Any, Dict, List, cast
 from config import get_db_connection
 from cache import cache_get, cache_set
 from routes.auth import login_required, role_required
@@ -7,10 +8,11 @@ from datetime import date
 reports_bp = Blueprint('reports', __name__)
 
 
-@reports_bp.route('/reports/dashboard-summary', methods=['GET'])
+# route to get dashboard stats for receptionists (total patients, today's appointments, revenue, etc.)
+@reports_bp.route('/dashboard/stats', methods=['GET'])
 @login_required
-def get_dashboard_summary():
-    """Return aggregated key metrics for the dashboard (cached per day)."""
+def dashboard_stats():
+    # This endpoint aggregates key metrics for the dashboard. It uses caching to avoid heavy DB queries on every page load.
     today     = date.today().isoformat()
     cache_key = f'dashboard:stats:{today}'
     cached    = cache_get(cache_key)
@@ -18,56 +20,67 @@ def get_dashboard_summary():
         return jsonify({'stats': cached, 'source': 'cache'}), 200
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
+        # Total registered patients
         cursor.execute("SELECT COUNT(*) AS total FROM patients")
-        total_patients = cursor.fetchone()['total']
+        total_row = cast(Dict[str, Any], cursor.fetchone() or {})
+        total_patients = int(total_row.get('total') or 0)
 
+        # Today's appointments grouped by status
         cursor.execute("""
             SELECT status, COUNT(*) AS count
             FROM appointments
             WHERE DATE(appointment_datetime) = CURDATE()
             GROUP BY status
         """)
-        appointments_today = {row['status']: row['count'] for row in cursor.fetchall()}
+        appt_rows = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        appointments_today = {row['status']: row['count'] for row in appt_rows}
 
+        # Revenue collected today
         cursor.execute("""
             SELECT COALESCE(SUM(amount_paid), 0) AS revenue
             FROM payments
             WHERE payment_date = CURDATE()
         """)
-        revenue_today = float(cursor.fetchone()['revenue'])
+        revenue_row = cast(Dict[str, Any], cursor.fetchone() or {})
+        revenue_today = float(revenue_row.get('revenue') or 0)
 
-        cursor.execute("SELECT COUNT(*) AS count FROM invoices WHERE payment_status = 'Unpaid'")
-        unpaid_invoices = cursor.fetchone()['count']
+        # Count of unpaid invoices (useful alert for reception)
+        cursor.execute("""
+            SELECT COUNT(*) AS count FROM invoices WHERE payment_status = 'Unpaid'
+        """)
+        unpaid_row = cast(Dict[str, Any], cursor.fetchone() or {})
+        unpaid_invoices = int(unpaid_row.get('count') or 0)
 
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not load dashboard stats.', 'details': str(error)}), 503
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not load dashboard stats.', 'details': str(e)}), 503
 
     stats = {
-        'total_patients':     total_patients,
+        'total_patients':    total_patients,
         'appointments_today': appointments_today,
-        'revenue_today':      revenue_today,
-        'unpaid_invoices':    unpaid_invoices
+        'revenue_today':     revenue_today,
+        'unpaid_invoices':   unpaid_invoices
     }
     cache_set(cache_key, stats, ttl=60)
     return jsonify({'stats': stats, 'source': 'db'}), 200
 
 
+# route to get weekly analytics data for charts (appointments and revenue trends)
 @reports_bp.route('/analytics/weekly', methods=['GET'])
 @login_required
-def get_weekly_analytics():
-    """Return a 7-day trend of appointments and revenue per day for charts."""
+def weekly_analytics():
+    """7-day trend: appointments and revenue per day for charts."""
     cache_key = f'analytics:weekly:{date.today().isoformat()}'
     cached    = cache_get(cache_key)
     if cached:
         return jsonify({'weekly': cached, 'source': 'cache'}), 200
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT
                 DATE(a.appointment_datetime) AS day,
@@ -83,31 +96,33 @@ def get_weekly_analytics():
             GROUP BY DATE(a.appointment_datetime)
             ORDER BY day
         """)
-        weekly = cursor.fetchall()
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not load weekly analytics.', 'details': str(error)}), 503
+        weekly = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not load weekly analytics.', 'details': str(e)}), 503
 
     cache_set(cache_key, weekly, ttl=300)
     return jsonify({'weekly': weekly, 'source': 'db'}), 200
 
 
+# route to get diagnoses for a specific visit (for detailed view)
 @reports_bp.route('/analytics/snapshots', methods=['GET'])
 @login_required
-def get_analytics_snapshots():
+def analytics_snapshots():
     """
-    Return pre-aggregated daily snapshots from the analytics_snapshots table.
-    These are computed once per day so this query is fast even on slow hardware.
+    Reads from the analytics_snapshots table — pre-aggregated daily data.
+    Because the snapshots are computed once per day by a scheduled job,
+    this query is very fast even on weak hardware or slow connections.
     """
-    limit     = min(int(request.args.get('limit', 30)), 90)
+    limit     = min(int(request.args.get('limit', 30)), 90)  # cap at 90 days
     cache_key = f'analytics:snapshots:{limit}'
     cached    = cache_get(cache_key)
     if cached:
         return jsonify({'snapshots': cached, 'source': 'cache'}), 200
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT snapshot_date, total_patients, total_appointments,
                    total_revenue, top_diagnosis, cancellation_rate, avg_wait_time_min
@@ -115,71 +130,79 @@ def get_analytics_snapshots():
             ORDER BY snapshot_date DESC
             LIMIT %s
         """, (limit,))
-        snapshots = cursor.fetchall()
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not load snapshots.', 'details': str(error)}), 503
+        snapshots = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not load snapshots.', 'details': str(e)}), 503
 
     cache_set(cache_key, snapshots, ttl=600)
     return jsonify({'snapshots': snapshots, 'source': 'db'}), 200
 
 
+# route to get financial report for a date range (for admin dashboard)
 @reports_bp.route('/reports/financial', methods=['GET'])
 @role_required('admin')
-def get_financial_report():
-    """Return a financial summary for a date range. Usage: ?from=2025-06-01&to=2025-06-30"""
+def financial_report():
+    """
+    Financial summary for a date range.
+    Usage: ?from=2025-06-01&to=2025-06-30
+    """
     date_from = request.args.get('from', date.today().replace(day=1).isoformat())
     date_to   = request.args.get('to',   date.today().isoformat())
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
+        # Revenue collected in the period
         cursor.execute("""
             SELECT COALESCE(SUM(amount_paid), 0) AS total_collected
             FROM payments
             WHERE payment_date BETWEEN %s AND %s
         """, (date_from, date_to))
-        revenue = cursor.fetchone()
+        revenue = cast(Dict[str, Any], cursor.fetchone() or {})
 
+        # Breakdown by payment method
         cursor.execute("""
             SELECT payment_method, SUM(amount_paid) AS total, COUNT(*) AS transactions
             FROM payments
             WHERE payment_date BETWEEN %s AND %s
             GROUP BY payment_method
         """, (date_from, date_to))
-        by_method = cursor.fetchall()
+        by_method = cast(List[Dict[str, Any]], cursor.fetchall() or [])
 
+        # Outstanding balances
         cursor.execute("""
             SELECT payment_status, COUNT(*) AS count, SUM(amount_due) AS total_owed
             FROM invoices
             WHERE invoice_date BETWEEN %s AND %s
             GROUP BY payment_status
         """, (date_from, date_to))
-        by_status = cursor.fetchall()
+        by_status = cast(List[Dict[str, Any]], cursor.fetchall() or [])
 
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not generate financial report.', 'details': str(error)}), 503
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not generate financial report.', 'details': str(e)}), 503
 
     return jsonify({
         'period':          {'from': date_from, 'to': date_to},
-        'total_collected': float(revenue['total_collected']),
+        'total_collected': float(revenue.get('total_collected') or 0),
         'by_method':       by_method,
         'by_status':       by_status
     }), 200
 
 
+# route to get clinical report for a date range (for admin and doctors)
 @reports_bp.route('/reports/clinical', methods=['GET'])
 @role_required('admin', 'doctor')
-def get_clinical_report():
-    """Return top diagnoses and visit volume for a date range."""
+def clinical_report():
+    """Top diagnoses and visit volume for a date range."""
     date_from = request.args.get('from', date.today().replace(day=1).isoformat())
     date_to   = request.args.get('to',   date.today().isoformat())
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT d.description, COUNT(*) AS frequency
@@ -190,17 +213,18 @@ def get_clinical_report():
             ORDER BY frequency DESC
             LIMIT 10
         """, (date_from, date_to))
-        top_diagnoses = cursor.fetchall()
+        top_diagnoses = cast(List[Dict[str, Any]], cursor.fetchall() or [])
 
         cursor.execute("""
             SELECT COUNT(*) AS total_visits FROM medical_visits
             WHERE visit_date BETWEEN %s AND %s
         """, (date_from, date_to))
-        total_visits = cursor.fetchone()['total_visits']
+        total_row = cast(Dict[str, Any], cursor.fetchone() or {})
+        total_visits = int(total_row.get('total_visits') or 0)
 
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not generate clinical report.', 'details': str(error)}), 503
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not generate clinical report.', 'details': str(e)}), 503
 
     return jsonify({
         'period':        {'from': date_from, 'to': date_to},
@@ -209,16 +233,17 @@ def get_clinical_report():
     }), 200
 
 
+# route to get operational report for a date range (for admin and doctors)
 @reports_bp.route('/reports/operational', methods=['GET'])
 @role_required('admin')
-def get_operational_report():
-    """Return appointment completion rates and average wait times for a date range."""
+def operational_report():
+    #Appointment completion rates and average wait times for a date range.
     date_from = request.args.get('from', date.today().replace(day=1).isoformat())
     date_to   = request.args.get('to',   date.today().isoformat())
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT status, COUNT(*) AS count
@@ -226,21 +251,21 @@ def get_operational_report():
             WHERE DATE(appointment_datetime) BETWEEN %s AND %s
             GROUP BY status
         """, (date_from, date_to))
-        by_status = cursor.fetchall()
+        by_status = cast(List[Dict[str, Any]], cursor.fetchall() or [])
 
         cursor.execute("""
             SELECT AVG(avg_wait_time_min) AS avg_wait
             FROM analytics_snapshots
             WHERE snapshot_date BETWEEN %s AND %s
         """, (date_from, date_to))
-        avg_wait = cursor.fetchone()
+        avg_wait = cast(Dict[str, Any], cursor.fetchone() or {})
 
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not generate operational report.', 'details': str(error)}), 503
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not generate operational report.', 'details': str(e)}), 503
 
     return jsonify({
-        'period':                 {'from': date_from, 'to': date_to},
+        'period':                {'from': date_from, 'to': date_to},
         'appointments_by_status': by_status,
-        'avg_wait_time_minutes':  float(avg_wait['avg_wait'] or 0)
+        'avg_wait_time_minutes':  float(avg_wait.get('avg_wait') or 0)
     }), 200

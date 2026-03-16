@@ -4,257 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoices - CCMS</title>
-  <link rel="stylesheet" href="../assets/css/style.css" />
-  <style>
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-lg);
-      padding: var(--spacing-md) var(--spacing-lg);
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-sm);
-    }
-
-    .page-heading {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .page-title {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .page-subtitle {
-      margin: 0;
-      font-size: 13px;
-      color: var(--text-light);
-    }
-
-    .page-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      flex-shrink: 0;
-    }
-
-    .filters {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--spacing-lg);
-      align-items: flex-end;
-    }
-
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-sm);
-    }
-
-    .filter-group label {
-      font-weight: 500;
-      font-size: 13px;
-    }
-
-    .filter-group input,
-    .filter-group select {
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      font-size: 13px;
-    }
-
-    .invoices-table {
-      width: 100%;
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      border-collapse: collapse;
-      overflow: hidden;
-    }
-
-    .invoices-table th {
-      padding: var(--spacing-md);
-      text-align: left;
-      font-weight: 600;
-      background: var(--bg-light);
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
-
-    .invoices-table td {
-      padding: var(--spacing-md);
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
-
-    .invoices-table tbody tr:hover {
-      background: var(--bg-light);
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: capitalize;
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: var(--spacing-sm);
-    }
-
-    .create-invoice-dialog {
-      background: white;
-      border-radius: var(--radius-lg);
-      padding: var(--spacing-lg);
-      max-width: 560px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .dialog-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .dialog-title {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .dialog-close {
-      border: none;
-      background: none;
-      font-size: 22px;
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .dialog-field {
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .dialog-field.services {
-      margin-bottom: var(--spacing-md);
-    }
-
-    .dialog-label {
-      font-weight: 500;
-      font-size: 13px;
-      display: block;
-      margin-bottom: var(--spacing-sm);
-    }
-
-    .dialog-select {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      font-size: 13px;
-    }
-
-    .dialog-services-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    .dialog-services-table thead tr {
-      background: var(--bg-light);
-    }
-
-    .dialog-services-table th {
-      padding: 8px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .dialog-services-table th.qty,
-    .dialog-services-table th.price {
-      text-align: right;
-    }
-
-    .dialog-services-table th.qty {
-      width: 60px;
-    }
-
-    .dialog-services-table th.price {
-      width: 100px;
-    }
-
-    .dialog-services-table th.remove {
-      width: 30px;
-    }
-
-    .dialog-add-service {
-      margin-top: var(--spacing-md);
-    }
-
-    .dialog-total {
-      text-align: right;
-      font-weight: 700;
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .dialog-actions {
-      display: flex;
-      gap: var(--spacing-md);
-    }
-
-    .dialog-actions .btn {
-      flex: 1;
-    }
-
-    @media (max-width: 768px) {
-      .page-header {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .page-actions {
-        width: 100%;
-      }
-
-      .page-actions .btn {
-        width: 100%;
-      }
-
-      .filters {
-        grid-template-columns: 1fr;
-      }
-
-      .invoices-table th {
-        font-size: 12px;
-      }
-
-      .invoices-table td {
-        font-size: 12px;
-        padding: var(--spacing-sm);
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="stylesheet" href="/billing/billing.css" />
 </head>
 <body>
-  <!-- Header -->
   <header>
     <div class="logo">
       <div class="logo-icon">HB</div>
@@ -272,13 +25,13 @@
     </div>
   </header>
 
-  <!-- Sidebar -->
   <aside>
     <button class="sidebar-toggle" onclick="toggleSidebar()">Menu</button>
     <nav>
       <ul>
         <li><a href="/dashboard/index.html"><span data-icon class="icon-dashboard"></span>Dashboard</a></li>
         <li data-role="receptionist,doctor,admin"><a href="/patients/list.html"><span data-icon class="icon-patients"></span>Patients</a></li>
+        <li data-role="receptionist,admin"><a href="/patients/register.html"><span data-icon class="icon-add"></span>Register Patient</a></li>
         <li data-role="receptionist,doctor,admin"><a href="/appointments/index.html"><span data-icon class="icon-appointments"></span>Appointments</a></li>
         <li data-role="receptionist,admin"><a href="/billing/index.html" class="active"><span data-icon class="icon-billing"></span>Billing</a></li>
         <li data-role="admin"><a href="/reports/index.html"><span data-icon class="icon-reports"></span>Reports</a></li>
@@ -286,7 +39,6 @@
     </nav>
   </aside>
 
-  <!-- Main Content -->
   <main>
     <div class="page-header">
       <div class="page-heading">
@@ -298,7 +50,6 @@
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="filters">
       <div class="filter-group">
         <label>Patient Search</label>
@@ -315,7 +66,6 @@
       </div>
     </div>
 
-    <!-- Invoices Table -->
     <table class="invoices-table">
       <thead>
         <tr>
@@ -332,12 +82,10 @@
     </table>
   </main>
 
-  <!-- Footer -->
   <footer>
-    CCMS © 2025 — HealthHub Bridge
+    CCMS © 2025 - HealthHub Bridge
   </footer>
 
-  <!-- Create Invoice Modal -->
   <div class="modal-overlay" id="create-invoice-modal">
     <div class="create-invoice-dialog">
       <div class="dialog-header">
@@ -375,191 +123,7 @@
     </div>
   </div>
 
-  <script src="../assets/js/utils.js"></script>
-  <script>
-    // Page bootstrap and access guard for billing users.
-    authGuard();
-    checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
-
-    // Optional patient prefill (set by other workflows).
-    let pendingPrefillInvoicePatientId = sessionStorage.getItem('prefillInvoicePatientId');
-
-    function toggleSidebar() {
-      document.querySelector('aside').classList.toggle('open');
-    }
-
-    // Local UI state
-    let allInvoices = [];
-
-    // Load invoices, then reuse shared filter pipeline for rendering.
-    async function loadInvoices() {
-      const container = document.getElementById('invoices-list');
-      try {
-        const response = await apiFetch('/api/invoices');
-        allInvoices = response?.invoices || [];
-        applyFilters();
-      } catch (error) {
-        container.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: var(--spacing-lg); color: var(--danger);">Failed to load invoices</td></tr>';
-      }
-    }
-
-    // Apply patient/status filters from the toolbar.
-    function applyFilters() {
-      const search = document.getElementById('filter-patient').value.trim().toLowerCase();
-      const status = document.getElementById('filter-status').value;
-
-      const filtered = allInvoices.filter(inv => {
-        const name = `${inv.first_name} ${inv.last_name}`.toLowerCase();
-        const clinic = (inv.clinic_number || '').toLowerCase();
-        if (search && !name.includes(search) && !clinic.includes(search)) return false;
-        if (status && inv.payment_status !== status) return false;
-        return true;
-      });
-
-      renderInvoices(filtered);
-    }
-
-    // Invoices table renderer.
-    function renderInvoices(invoices) {
-      const container = document.getElementById('invoices-list');
-      if (!invoices.length) {
-        container.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:var(--spacing-lg);color:var(--text-light);">No invoices found</td></tr>';
-        return;
-      }
-      container.innerHTML = invoices.map(invoice => {
-        const statusColor = invoice.payment_status === 'Paid' ? 'success' : invoice.payment_status === 'Partial' ? 'warning' : 'danger';
-        return `
-          <tr>
-            <td><strong>INV-${String(invoice.invoice_id).padStart(4,'0')}</strong></td>
-            <td>${invoice.first_name} ${invoice.last_name}<br><small style="color:var(--text-muted)">${invoice.clinic_number}</small></td>
-            <td>${formatDate(invoice.invoice_date)}</td>
-            <td>${formatCurrency(invoice.total_amount)}</td>
-            <td>${formatCurrency(invoice.amount_due)}</td>
-            <td><span class="status-badge status-${statusColor}">${invoice.payment_status}</span></td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-small btn-primary" onclick="viewInvoice('${invoice.invoice_id}')">View</button>
-                <button class="btn btn-small btn-secondary" onclick="recordPayment('${invoice.invoice_id}')">Record Payment</button>
-              </div>
-            </td>
-          </tr>`;
-      }).join('');
-    }
-
-    // Create-invoice modal lifecycle.
-    function createInvoice() {
-      showModal('create-invoice-modal');
-      loadPatientsForInvoice();
-    }
-
-    async function loadPatientsForInvoice() {
-      try {
-        const response = await apiFetch('/api/patients');
-        const select = document.getElementById('invoice-patient-select');
-        select.innerHTML = '<option value="">Select Patient</option>';
-        (response?.patients || []).forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.patient_id;
-          opt.textContent = `${p.first_name} ${p.last_name} (${p.clinic_number})`;
-          select.appendChild(opt);
-        });
-
-        if (pendingPrefillInvoicePatientId) {
-          select.value = String(pendingPrefillInvoicePatientId);
-          pendingPrefillInvoicePatientId = null;
-          sessionStorage.removeItem('prefillInvoicePatientId');
-        }
-      } catch (e) { /* silent */ }
-    }
-
-    // Line-item editor helpers.
-    function addServiceRow() {
-      const tbody = document.getElementById('services-tbody-new');
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input type="text" placeholder="Service name" style="width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;" /></td>
-        <td><input type="number" value="1" min="1" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;" onchange="updateInvoiceTotal()" /></td>
-        <td><input type="number" value="0" min="0" step="0.01" style="width:90px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;" onchange="updateInvoiceTotal()" /></td>
-        <td><button type="button" onclick="this.closest('tr').remove();updateInvoiceTotal();" style="border:none;background:none;color:var(--danger);font-size:14px;cursor:pointer;">X</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
-
-    function updateInvoiceTotal() {
-      const rows = document.querySelectorAll('#services-tbody-new tr');
-      let total = 0;
-      rows.forEach(row => {
-        const qty = parseFloat(row.querySelector('td:nth-child(2) input').value) || 0;
-        const price = parseFloat(row.querySelector('td:nth-child(3) input').value) || 0;
-        total += qty * price;
-      });
-      document.getElementById('invoice-total-preview').textContent = formatCurrency(total);
-    }
-
-    // Submit invoice creation payload to API.
-    async function submitCreateInvoice() {
-      const patientId = document.getElementById('invoice-patient-select').value;
-      if (!patientId) { showToast('Please select a patient', 'warning'); return; }
-
-      const rows = document.querySelectorAll('#services-tbody-new tr');
-      const services = [];
-      rows.forEach(row => {
-        const name = row.querySelector('td:nth-child(1) input').value.trim();
-        const qty = parseInt(row.querySelector('td:nth-child(2) input').value) || 1;
-        const price = parseFloat(row.querySelector('td:nth-child(3) input').value) || 0;
-        if (name) services.push({ service_name: name, quantity: qty, unit_price: price });
-      });
-      if (!services.length) { showToast('Please add at least one service', 'warning'); return; }
-
-      try {
-        await apiFetch('/api/invoices', { method: 'POST', body: JSON.stringify({ patient_id: patientId, services }) });
-        hideModal('create-invoice-modal');
-        showToast('Invoice created successfully', 'success');
-        loadInvoices();
-      } catch (e) {
-        showToast(e.message || 'Failed to create invoice', 'error');
-      }
-    }
-
-    // Quick payment capture from invoices list.
-    async function recordPayment(invoiceId) {
-      const amount = prompt('Enter payment amount (SSP):');
-      if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-        showToast('Invalid payment amount', 'error');
-        return;
-      }
-      const method = prompt('Payment method (Cash/Card/Insurance):', 'Cash') || 'Cash';
-      const today = new Date().toISOString().split('T')[0];
-      try {
-        await apiFetch('/api/payments', {
-          method: 'POST',
-          body: JSON.stringify({
-            invoice_id: invoiceId,
-            amount_paid: parseFloat(amount),
-            payment_method: method,
-            payment_date: today
-          })
-        });
-        showToast('Payment recorded successfully', 'success');
-        loadInvoices();
-      } catch (e) {
-        showToast(e.message || 'Failed to record payment', 'error');
-      }
-    }
-
-    function viewInvoice(invoiceId) {
-      location.href = `/billing/invoice.html?id=${invoiceId}`;
-    }
-
-    // Initial load + filter bindings.
-    loadInvoices();
-
-    document.getElementById('filter-patient').addEventListener('input', applyFilters);
-    document.getElementById('filter-status').addEventListener('change', applyFilters);
-
-    if (pendingPrefillInvoicePatientId) {
-      createInvoice();
-    }
-  </script>
+  <script src="/assets/js/utils.js"></script>
+  <script src="/billing/billing.js"></script>
 </body>
 </html>

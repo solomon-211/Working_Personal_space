@@ -1,26 +1,40 @@
 import os
 
 
-def load_dotenv(dotenv_path):
-    """Load simple KEY=VALUE pairs from a .env file into process env."""
-    if not os.path.exists(dotenv_path):
+def _load_env_file() -> None:
+    """Load backend/.env so DB credentials are available in all entrypoints."""
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if not os.path.exists(env_path):
         return
 
-    with open(dotenv_path, 'r', encoding='utf-8') as env_file:
-        for raw_line in env_file:
-            line = raw_line.strip()
-            if not line or line.startswith('#') or '=' not in line:
-                continue
+    # Prefer python-dotenv when available.
+    try:
+        import importlib
+        dotenv = importlib.import_module('dotenv')
+        load_dotenv = getattr(dotenv, 'load_dotenv', None)
+        if callable(load_dotenv):
+            load_dotenv(env_path)
+            return
+    except Exception:
+        pass
 
-            key, value = line.split('=', 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
+    # Fallback parser when python-dotenv is unavailable.
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                os.environ.setdefault(key, value)
+    except Exception:
+        # Keep defaults from Config if file parsing fails.
+        pass
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+_load_env_file()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'healthbridge-dev-secret-key')

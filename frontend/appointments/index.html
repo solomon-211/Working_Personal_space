@@ -4,114 +4,105 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Appointments — CCMS</title>
-  <link rel="stylesheet" href="../assets/css/style.css">
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/appointments/appointments.css">
 </head>
 <body>
 
-<div id="global-spinner"
-     style="display:none;position:fixed;inset:0;
-            background:rgba(255,255,255,0.7);
-            z-index:9999;align-items:center;
-            justify-content:center;">
-  <span class="spinner spinner-dark"
-        style="width:36px;height:36px;"></span>
+<div id="global-spinner" class="global-spinner-overlay">
+  <span class="spinner spinner-dark spinner-lg"></span>
 </div>
 
 <div class="modal-overlay" id="view-modal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal modal-520">
     <div class="modal-header">
       <h3 class="modal-title">Appointment Details</h3>
       <button class="modal-close" onclick="closeViewModal()">X</button>
     </div>
 
-    <div style="margin-bottom:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div class="mb-16">
+      <div class="grid-two-col">
         <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Patient Name</div>
-          <div style="font-weight:600;font-size:14px;" id="vm-patient-name">—</div>
+          <div class="meta-label">Patient Name</div>
+          <div class="meta-value" id="vm-patient-name">—</div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Clinic Number</div>
-          <div style="font-weight:600;font-size:14px;" id="vm-clinic-number">—</div>
+          <div class="meta-label">Clinic Number</div>
+          <div class="meta-value" id="vm-clinic-number">—</div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Doctor</div>
-          <div style="font-size:13px;" id="vm-doctor">—</div>
+          <div class="meta-label">Doctor</div>
+          <div class="text-sm" id="vm-doctor">—</div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Date & Time</div>
-          <div style="font-size:13px;" id="vm-datetime">—</div>
+          <div class="meta-label">Date & Time</div>
+          <div class="text-sm" id="vm-datetime">—</div>
         </div>
-        <div style="grid-column:1/-1;">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Reason</div>
-          <div style="font-size:13px;" id="vm-reason">—</div>
+        <div class="full-col">
+          <div class="meta-label">Reason</div>
+          <div class="text-sm" id="vm-reason">—</div>
         </div>
       </div>
     </div>
 
-    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;">
+    <hr class="section-divider">
 
     <div>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Consultation Status</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <div id="vm-step-pending" style="display:flex;align-items:center;gap:6px;font-size:13px;">
-          <span id="vm-dot-pending" style="width:10px;height:10px;border-radius:50%;background:#94A3B8;display:inline-block;"></span>
+      <div class="status-title">Consultation Status</div>
+      <div class="status-row">
+        <div id="vm-step-pending" class="status-step">
+          <span id="vm-dot-pending" class="status-dot"></span>
           Pending
         </div>
-        <div style="flex:1;height:2px;background:var(--border);" id="vm-line-1"></div>
-        <div id="vm-step-approved" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);">
-          <span id="vm-dot-approved" style="width:10px;height:10px;border-radius:50%;background:#E2E8F0;display:inline-block;"></span>
+        <div class="status-line" id="vm-line-1"></div>
+        <div id="vm-step-approved" class="status-step status-muted">
+          <span id="vm-dot-approved" class="status-dot status-dot-muted"></span>
           Approved
         </div>
-        <div style="flex:1;height:2px;background:var(--border);" id="vm-line-2"></div>
-        <div id="vm-step-completed" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);">
-          <span id="vm-dot-completed" style="width:10px;height:10px;border-radius:50%;background:#E2E8F0;display:inline-block;"></span>
+        <div class="status-line" id="vm-line-2"></div>
+        <div id="vm-step-completed" class="status-step status-muted">
+          <span id="vm-dot-completed" class="status-dot status-dot-muted"></span>
           Completed
         </div>
       </div>
 
-      <div id="vm-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      <div id="vm-actions" class="actions-wrap"></div>
     </div>
 
-    <div class="modal-footer" style="margin-top:16px;">
+    <div class="modal-footer modal-footer-top">
       <button class="btn btn-outline" onclick="closeViewModal()">Close</button>
     </div>
   </div>
 </div>
 
-<!-- Consultation Modal (doctor only) -->
 <div class="modal-overlay" id="consultation-modal">
-  <div class="modal" style="max-width:600px;">
+  <div class="modal modal-600">
     <div class="modal-header">
       <h3 class="modal-title" id="cons-title">Consultation</h3>
       <button class="modal-close" onclick="closeConsultationModal()">X</button>
     </div>
 
-    <div id="cons-patient-banner"
-         style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:13px;display:flex;gap:24px;">
-      <div><span style="color:var(--text-muted);">Patient: </span><strong id="cons-patient-name">—</strong></div>
-      <div><span style="color:var(--text-muted);">Clinic #: </span><strong id="cons-clinic-num">—</strong></div>
-      <div><span style="color:var(--text-muted);">Date: </span><strong id="cons-date">—</strong></div>
+    <div id="cons-patient-banner" class="cons-banner">
+      <div><span class="text-muted">Patient: </span><strong id="cons-patient-name">—</strong></div>
+      <div><span class="text-muted">Clinic #: </span><strong id="cons-clinic-num">—</strong></div>
+      <div><span class="text-muted">Date: </span><strong id="cons-date">—</strong></div>
     </div>
 
-    <!-- Notes -->
     <div class="form-group">
       <label class="form-label">Consultation Notes</label>
       <textarea id="cons-notes" class="form-control" rows="3"
                 placeholder="Observations, examination findings, treatment given..."></textarea>
     </div>
 
-    <!-- Diagnoses -->
     <div class="form-group">
       <label class="form-label">Diagnoses</label>
-      <div id="diagnoses-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;"></div>
+      <div id="diagnoses-list" class="stack-6 mb-6"></div>
       <button type="button" class="btn btn-outline btn-sm" onclick="addDiagnosisRow()">+ Add Diagnosis</button>
     </div>
 
-    <!-- Prescriptions -->
     <div class="form-group">
       <label class="form-label">Prescriptions</label>
-      <div id="prescriptions-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px;"></div>
+      <div id="prescriptions-list" class="stack-8 mb-6"></div>
       <button type="button" class="btn btn-outline btn-sm" onclick="addPrescriptionRow()">+ Add Prescription</button>
     </div>
 
@@ -123,40 +114,37 @@
 </div>
 
 <div class="modal-overlay" id="booking-modal">
-  <div class="modal" style="max-width:540px;">
+  <div class="modal modal-540">
     <div class="modal-header">
       <h3 class="modal-title">Schedule Appointment</h3>
       <button class="modal-close" onclick="closeBookingModal()">X</button>
     </div>
 
-    <!-- Step indicator -->
-    <div style="display:flex;align-items:center;margin-bottom:20px;">
-      <div id="step1-indicator" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#2563EB;">
-        <span id="step1-dot" style="width:22px;height:22px;border-radius:50%;background:#2563EB;color:white;display:flex;align-items:center;justify-content:center;font-size:11px;">1</span>
+    <div class="booking-steps">
+      <div id="step1-indicator" class="step-indicator step-active">
+        <span id="step1-dot" class="step-dot step-dot-active">1</span>
         Patient
       </div>
-      <div style="flex:1;height:2px;background:var(--border);margin:0 6px;"></div>
-      <div id="step2-indicator" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);">
-        <span id="step2-dot" style="width:22px;height:22px;border-radius:50%;background:#E2E8F0;color:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:11px;">2</span>
+      <div class="step-line"></div>
+      <div id="step2-indicator" class="step-indicator step-inactive">
+        <span id="step2-dot" class="step-dot step-dot-inactive">2</span>
         Doctor & Date
       </div>
-      <div style="flex:1;height:2px;background:var(--border);margin:0 6px;"></div>
-      <div id="step3-indicator" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);">
-        <span id="step3-dot" style="width:22px;height:22px;border-radius:50%;background:#E2E8F0;color:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:11px;">3</span>
+      <div class="step-line"></div>
+      <div id="step3-indicator" class="step-indicator step-inactive">
+        <span id="step3-dot" class="step-dot step-dot-inactive">3</span>
         Time & Reason
       </div>
     </div>
 
-    <!-- Step 1: Patient -->
     <div id="booking-step-1">
       <div class="form-group">
         <label class="form-label">Search Patient <span class="required">*</span></label>
         <input type="text" id="patient-search-input" class="form-control"
                placeholder="Type patient name or clinic number..." autocomplete="off">
-        <div id="patient-search-results"
-             style="border:1px solid var(--border);border-radius:8px;max-height:160px;overflow-y:auto;display:none;background:white;box-shadow:var(--shadow);"></div>
+           <div id="patient-search-results" class="search-results"></div>
         <input type="hidden" id="selected-patient-id">
-        <div id="selected-patient-display" style="margin-top:6px;font-size:12px;color:var(--success);font-weight:500;"></div>
+           <div id="selected-patient-display" class="selected-patient"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeBookingModal()">Cancel</button>
@@ -164,17 +152,16 @@
       </div>
     </div>
 
-    <!-- Step 2: Doctor & Date -->
-    <div id="booking-step-2" style="display:none;">
+    <div id="booking-step-2" class="is-hidden">
       <div class="form-group">
         <label class="form-label">Select Doctor <span class="required">*</span></label>
-        <div id="doctor-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:200px;overflow-y:auto;"></div>
+        <div id="doctor-cards" class="doctor-cards"></div>
         <input type="hidden" id="booking-doctor">
       </div>
       <div class="form-group">
         <label class="form-label">Appointment Date <span class="required">*</span></label>
-        <input type="date" id="booking-date" class="form-control" onchange="loadAvailableSlots()">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Select a doctor first, then pick a date to see available slots</div>
+        <input type="date" id="booking-date" class="form-control" title="Appointment date" onchange="loadAvailableSlots()">
+        <div class="helper-text">Select a doctor first, then pick a date to see available slots</div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="bookingNextStep(1)">← Back</button>
@@ -182,12 +169,11 @@
       </div>
     </div>
 
-    <!-- Step 3: Time & Reason -->
-    <div id="booking-step-3" style="display:none;">
+    <div id="booking-step-3" class="is-hidden">
       <div class="form-group">
         <label class="form-label">Available Time Slots <span class="required">*</span></label>
-        <div id="time-slots" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;">
-          <span style="font-size:12px;color:var(--text-muted);">Select a doctor and date first</span>
+        <div id="time-slots" class="time-slots">
+          <span class="hint-text">Select a doctor and date first</span>
         </div>
         <input type="hidden" id="selected-time">
       </div>
@@ -200,7 +186,6 @@
         <button class="btn btn-primary" onclick="submitBooking()">Confirm Appointment</button>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -230,16 +215,16 @@
       </button>
     </div>
 
-    <div style="margin-bottom:16px;">
-      <div style="position:relative;max-width:400px;">
-        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none;">Search</span>
+    <div class="mb-16">
+      <div class="apt-search-wrap">
+        <span class="apt-search-icon">Search</span>
         <input type="text" id="apt-search" placeholder="Search patient, doctor, or reason..."
-          style="width:100%;padding:9px 36px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;outline:none;background:white;color:var(--text);transition:border-color .15s,box-shadow .15s;"
+          class="apt-search-input"
           oninput="filterAppointments(this.value)"
           onfocus="this.style.borderColor='var(--primary)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)'"
           onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'" />
         <button id="apt-search-clear" onclick="clearAptSearch()"
-          style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;line-height:1;">Clear</button>
+          class="apt-search-clear">Clear</button>
       </div>
     </div>
 
@@ -269,33 +254,27 @@
         <div class="pagination">
           <span class="pagination-info"
                 id="apt-pagination-info"></span>
-          <div id="apt-pagination-controls"
-               style="display:flex;gap:4px;">
+          <div id="apt-pagination-controls" class="pagination-controls">
           </div>
         </div>
       </div>
     </div>
 
-    <div id="view-calendar" style="display:none;">
+    <div id="view-calendar" class="is-hidden">
       <div class="card">
-        <div style="display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    margin-bottom:16px;">
+        <div class="calendar-header-row">
           <button class="btn btn-outline btn-sm"
                   onclick="changeWeek(-1)">
             ← Prev Week
           </button>
-          <strong id="week-label"
-                  style="font-size:14px;">
+            <strong id="week-label" class="week-label">
           </strong>
           <button class="btn btn-outline btn-sm"
                   onclick="changeWeek(1)">
             Next Week →
           </button>
         </div>
-        <div id="calendar-grid"
-             style="overflow-x:auto;">
+        <div id="calendar-grid" class="calendar-grid-wrap">
         </div>
       </div>
     </div>
@@ -303,752 +282,7 @@
   </main>
 </div>
 
-<script src="../assets/js/utils.js"></script>
-<script>
-
-// Page bootstrap: auth, shell layout, and role-based UI visibility.
-authGuard();
-
-document.getElementById('header-slot').outerHTML = renderHeader();
-document.getElementById('sidebar-slot').outerHTML = renderSidebar('appointments');
-
-applyRoleVisibility();
-
-// Shared page state for list, booking wizard, and calendar views.
-const role = sessionStorage.getItem('role');
-let allAppointments = [];
-let filteredAppointments = [];
-let allDoctors = [];
-let currentPage = 1;
-const perPage = 10;
-let currentWeekOffset = 0;
-
-const doctorColors = ['#DBEAFE', '#DCFCE7', '#FEF3C7', '#FCE7F3', '#EDE9FE'];
-
-// Data loading
-async function loadAppointments() {
-  try {
-    const data = await apiFetch('/api/appointments');
-    allAppointments = data?.appointments ?? [];
-    filteredAppointments = [...allAppointments];
-    currentPage = 1;
-    renderTable();
-  } catch (e) {
-    document.getElementById('appointments-tbody').innerHTML = `
-      <tr><td colspan="6">
-        <div class="empty-state">
-          <div class="empty-state-text">
-            Could not load appointments. Please try again.
-          </div>
-        </div>
-      </td></tr>`;
-  }
-}
-
-async function loadDoctorsForBooking() {
-  try {
-    const data = await apiFetch('/api/doctors');
-    allDoctors = data?.doctors ?? [];
-  } catch (e) {}
-}
-
-function renderDoctorCards() {
-  const container = document.getElementById('doctor-cards');
-  if (!container) return;
-  if (allDoctors.length === 0) {
-    container.innerHTML = `<div style="font-size:13px;color:var(--text-muted);grid-column:1/-1;">No doctors available</div>`;
-    return;
-  }
-  container.innerHTML = allDoctors.map(d => `
-    <div id="doc-card-${d.doctor_id}"
-         onclick="selectDoctorCard(${d.doctor_id})"
-         style="border:2px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s;">
-      <div style="font-weight:600;font-size:13px;margin-bottom:2px;">${d.full_name}</div>
-      <div style="font-size:11px;color:var(--text-muted);">${d.specialization ?? ''}</div>
-    </div>
-  `).join('');
-}
-
-function selectDoctorCard(doctorId) {
-  document.getElementById('booking-doctor').value = doctorId;
-  document.querySelectorAll('[id^="doc-card-"]').forEach(el => {
-    el.style.borderColor = 'var(--border)';
-    el.style.background = '';
-  });
-  const card = document.getElementById(`doc-card-${doctorId}`);
-  if (card) { card.style.borderColor = '#2563EB'; card.style.background = '#EFF6FF'; }
-  loadAvailableSlots();
-}
-
-// Appointment list rendering + search
-function renderTable() {
-  const tbody = document.getElementById('appointments-tbody');
-  const result = paginate(filteredAppointments, currentPage, perPage);
-
-  if (result.items.length === 0) {
-    tbody.innerHTML = `
-      <tr><td colspan="6">
-        <div class="empty-state">
-          <div class="empty-state-text">
-            No appointments booked yet
-          </div>
-        </div>
-      </td></tr>`;
-
-    document.getElementById('apt-pagination-info').textContent = '';
-    document.getElementById('apt-pagination-controls').innerHTML='';
-    return;
-  }
-
-  tbody.innerHTML = result.items.map(a => `
-    <tr>
-      <td>
-        <div style="font-weight:500;">
-          ${a.first_name ?? ''} ${a.last_name ?? ''}
-        </div>
-      </td>
-      <td>${a.doctor_name ?? '—'}</td>
-      <td>
-        ${formatDate(a.appointment_datetime)}
-        <span style="color:var(--text-muted);font-size:12px;">
-          ${formatTime(a.appointment_datetime)}
-        </span>
-      </td>
-      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-        ${a.reason ?? '—'}
-      </td>
-      <td>${renderStatusTracker(a.status, viewApprovedIds.has(a.appointment_id))}</td>
-      <td>
-        <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline btn-sm" onclick="openViewModal(${a.appointment_id})">View</button>
-          ${a.status === 'Scheduled' && (role === 'admin' || role === 'receptionist') ? `
-            <button class="btn btn-danger btn-sm" onclick="cancelAppointment(${a.appointment_id})">Cancel</button>
-          ` : ''}
-        </div>
-      </td>
-    </tr>
-  `).join('');
-
-  document.getElementById('apt-pagination-info').textContent =
-    `Showing ${result.start}–${result.end} of ${result.total} appointments`;
-
-  renderPagination('apt-pagination-controls', result.totalPages, currentPage, (page) => {
-    currentPage = page;
-    renderTable();
-  });
-}
-
-function renderStatusTracker(status, isApproved) {
-  const step = status === 'Completed' ? 3 : (isApproved ? 2 : 1);
-  const dot = (active) => `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${active ? '#22C55E' : '#E2E8F0'};"></span>`;
-  const line = (active) => `<span style="display:inline-block;width:18px;height:2px;background:${active ? '#22C55E' : '#E2E8F0'};vertical-align:middle;margin:0 2px;"></span>`;
-  const label = (text, color, bold) => `<span style="font-size:11px;color:${color};${bold ? 'font-weight:600;' : ''}">${text}</span>`;
-
-  if (status === 'Cancelled' || status === 'No-show') {
-    return renderBadge(status);
-  }
-
-  return `<div style="display:flex;align-items:center;gap:2px;white-space:nowrap;">
-    ${dot(step >= 1)}${label('Pending', step === 1 ? '#F59E0B' : '#64748B', step === 1)}
-    ${line(step >= 2)}
-    ${dot(step >= 2)}${label('Approved', step === 2 ? '#2563EB' : (step > 2 ? '#64748B' : '#CBD5E1'), step === 2)}
-    ${line(step >= 3)}
-    ${dot(step >= 3)}${label('Completed', step === 3 ? '#22C55E' : '#CBD5E1', step === 3)}
-  </div>`;
-}
-
-function filterAppointments(query) {
-  const q = query.trim().toLowerCase();
-  document.getElementById('apt-search-clear').style.display = q ? 'block' : 'none';
-  filteredAppointments = q
-    ? allAppointments.filter(a =>
-        `${a.first_name ?? ''} ${a.last_name ?? ''}`.toLowerCase().includes(q) ||
-        (a.doctor_name ?? '').toLowerCase().includes(q) ||
-        (a.reason ?? '').toLowerCase().includes(q) ||
-        (a.status ?? '').toLowerCase().includes(q)
-      )
-    : [...allAppointments];
-  currentPage = 1;
-  renderTable();
-}
-
-function clearAptSearch() {
-  const input = document.getElementById('apt-search');
-  input.value = '';
-  document.getElementById('apt-search-clear').style.display = 'none';
-  filteredAppointments = [...allAppointments];
-  currentPage = 1;
-  renderTable();
-  input.focus();
-}
-
-function applyFilters() {}
-function clearFilters() {}
-
-// Appointment status updates
-async function cancelAppointment(id) {
-  if (!confirm('Are you sure you want to cancel this appointment?')) return;
-
-  try {
-    await apiFetch(`/api/appointments/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'Cancelled' })
-    });
-    showToast('Appointment cancelled', 'success');
-    loadAppointments();
-  } catch (e) {
-    showToast(e.message || 'Failed to cancel appointment', 'error');
-  }
-}
-
-async function completeAppointment(id) {
-  try {
-    await apiFetch(`/api/appointments/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'Completed' })
-    });
-    showToast('Appointment marked as completed', 'success');
-    await loadAppointments();
-    if (document.getElementById('view-calendar').style.display !== 'none') renderCalendar();
-  } catch (e) {
-    showToast(e.message || 'Failed to update appointment', 'error');
-  }
-}
-
-// Booking modal workflow (patient -> doctor/date -> slot)
-function openBookingModal() {
-  document.getElementById('booking-date').min = new Date().toISOString().split('T')[0];
-  bookingNextStep(1);
-  document.getElementById('booking-modal').classList.add('open');
-}
-
-function bookingNextStep(step) {
-  if (step === 2 && !document.getElementById('selected-patient-id').value) {
-    showToast('Please select a patient first', 'error'); return;
-  }
-  if (step === 3) {
-    if (!document.getElementById('booking-doctor').value) {
-      showToast('Please select a doctor', 'error'); return;
-    }
-    if (!document.getElementById('booking-date').value) {
-      showToast('Please select a date', 'error'); return;
-    }
-  }
-
-  [1, 2, 3].forEach(s => {
-    document.getElementById(`booking-step-${s}`).style.display = s === step ? 'block' : 'none';
-  });
-
-  if (step === 2) renderDoctorCards();
-
-  const colors = { active: '#2563EB', done: '#22C55E', inactive: '#E2E8F0' };
-  const textColors = { active: '#2563EB', done: '#22C55E', inactive: 'var(--text-muted)' };
-  [1, 2, 3].forEach(s => {
-    const dot = document.getElementById(`step${s}-dot`);
-    const ind = document.getElementById(`step${s}-indicator`);
-    if (!dot || !ind) return;
-    if (s < step) {
-      dot.style.background = colors.done; dot.style.color = 'white'; ind.style.color = textColors.done;
-    } else if (s === step) {
-      dot.style.background = colors.active; dot.style.color = 'white'; ind.style.color = textColors.active;
-    } else {
-      dot.style.background = colors.inactive; dot.style.color = '#94A3B8'; ind.style.color = textColors.inactive;
-    }
-  });
-}
-
-function closeBookingModal() {
-  document.getElementById('booking-modal').classList.remove('open');
-  document.getElementById('patient-search-input').value = '';
-  document.getElementById('selected-patient-id').value = '';
-  document.getElementById('selected-patient-display').textContent = '';
-  document.getElementById('booking-doctor').value = '';
-  document.getElementById('booking-date').value = '';
-  document.getElementById('booking-reason').value = '';
-  document.getElementById('time-slots').innerHTML =
-    `<span style="font-size:12px;color:var(--text-muted);">Select a doctor and date first</span>`;
-  document.getElementById('selected-time').value = '';
-  document.querySelectorAll('[id^="doc-card-"]').forEach(el => {
-    el.style.borderColor = 'var(--border)';
-    el.style.background = '';
-  });
-  bookingNextStep(1);
-}
-
-const searchPatients = debounce(async (query) => {
-  if (query.length < 2) {
-    document.getElementById('patient-search-results').style.display = 'none';
-    return;
-  }
-
-  try {
-    const data = await apiFetch(`/api/patients?search=${encodeURIComponent(query)}`);
-    const patients = data?.patients ?? [];
-    const resultsEl = document.getElementById('patient-search-results');
-
-    if (patients.length === 0) {
-      resultsEl.innerHTML = `
-        <div style="padding:10px 12px;font-size:13px;color:var(--text-muted);">
-          No patients found
-        </div>`;
-    } else {
-      resultsEl.innerHTML = patients.slice(0, 6).map(p => `
-        <div onclick="selectPatient(${p.patient_id},'${p.first_name} ${p.last_name}','${p.clinic_number}')"
-             style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);"
-             onmouseover="this.style.background='var(--bg)'"
-             onmouseout="this.style.background='white'">
-          <strong>${p.first_name} ${p.last_name}</strong>
-          <span style="color:var(--text-muted);margin-left:6px;">
-            ${p.clinic_number}
-          </span>
-        </div>
-      `).join('');
-    }
-
-    resultsEl.style.display = 'block';
-
-  } catch (e) {}
-}, 300);
-
-document.getElementById('patient-search-input').addEventListener('input', (e) => {
-  searchPatients(e.target.value);
-});
-
-function selectPatient(id, name, clinicNum) {
-  document.getElementById('selected-patient-id').value = id;
-  document.getElementById('patient-search-input').value = `${name} (${clinicNum})`;
-  document.getElementById('selected-patient-display').textContent = `${name} selected`;
-  document.getElementById('patient-search-results').style.display = 'none';
-}
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#patient-search-input') && !e.target.closest('#patient-search-results')) {
-    document.getElementById('patient-search-results').style.display = 'none';
-  }
-});
-
-async function loadAvailableSlots() {
-  const doctorId = document.getElementById('booking-doctor').value;
-  const date = document.getElementById('booking-date').value;
-  const slotsEl = document.getElementById('time-slots');
-
-  if (!doctorId || !date) return;
-
-  slotsEl.innerHTML = `<span class="spinner spinner-dark" style="width:16px;height:16px;"></span>`;
-  document.getElementById('selected-time').value = '';
-
-  try {
-    const data = await apiFetch(`/api/doctor-schedules/${doctorId}?date=${date}`);
-
-    if (!data.available) {
-      const [y, m, d] = date.split('-').map(Number);
-      const dayOfWeek = new Date(y, m - 1, d).getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      slotsEl.innerHTML = `<span style="font-size:12px;color:var(--danger);">${isWeekend ? 'Doctor does not work on weekends' : 'Doctor does not work on this day'}</span>`;
-      return;
-    }
-
-    // Build hourly slots from start_time (e.g. "08:00:00") until 17:00
-    const startHour = parseInt((data.start_time ?? '08:00:00').split(':')[0]);
-    const allSlots = [];
-    for (let h = startHour; h <= 17; h++) {
-      allSlots.push(`${String(h).padStart(2,'0')}:00`);
-    }
-
-    // Filter out already-booked slots and past slots if booking for today
-    const booked = (data.booked_slots ?? []).map(b => {
-      const t = b.split(' ')[1] ?? b;
-      return t.substring(0, 5);
-    });
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const nowHour  = new Date().getHours();
-
-    const available = allSlots.filter(s => {
-      if (booked.includes(s)) return false;
-      if (date === todayStr && parseInt(s.split(':')[0]) <= nowHour) return false;
-      return true;
-    });
-
-    if (available.length === 0) {
-      slotsEl.innerHTML = `<span style="font-size:12px;color:var(--danger);">No available slots for this date</span>`;
-      return;
-    }
-
-    slotsEl.innerHTML = available.map(slot => `
-      <button type="button" class="btn btn-outline btn-sm" id="slot-${slot}" onclick="selectSlot('${slot}')">
-        ${slot}
-      </button>
-    `).join('');
-
-  } catch (e) {
-    slotsEl.innerHTML = `<span style="font-size:12px;color:var(--danger);">Could not load slots. Try again.</span>`;
-  }
-}
-
-function selectSlot(time) {
-  document.querySelectorAll('[id^="slot-"]').forEach(b => {
-    b.style.background = '';
-    b.style.color = '';
-  });
-
-  const btn = document.getElementById(`slot-${time}`);
-  if (btn) {
-    btn.style.background = 'var(--primary)';
-    btn.style.color = 'white';
-  }
-
-  document.getElementById('selected-time').value = time;
-}
-
-async function submitBooking() {
-  const patientId = document.getElementById('selected-patient-id').value;
-  const doctorId = document.getElementById('booking-doctor').value;
-  const date = document.getElementById('booking-date').value;
-  const time = document.getElementById('selected-time').value;
-  const reason = document.getElementById('booking-reason').value;
-
-  if (!patientId || !doctorId || !date || !time) {
-    showToast('Please select patient, doctor, date and time slot', 'error');
-    return;
-  }
-
-  try {
-    await apiFetch('/api/appointments', {
-      method: 'POST',
-      body: JSON.stringify({
-        patient_id: parseInt(patientId),
-        doctor_id:  parseInt(doctorId),
-        appointment_datetime: `${date} ${time}:00`,
-        reason,
-        status: 'Scheduled'
-      })
-    });
-
-    closeBookingModal();
-    showToast('Appointment scheduled successfully', 'success');
-    loadAppointments();
-
-  } catch (e) {
-    showToast(e.message || 'Failed to schedule appointment', 'error');
-  }
-}
-
-// List/calendar view switchers
-function switchView(view, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-
-  document.getElementById('view-list').style.display = view === 'list' ? 'block' : 'none';
-  document.getElementById('view-calendar').style.display = view === 'calendar' ? 'block' : 'none';
-
-  if (view === 'calendar') renderCalendar();
-}
-
-function changeWeek(offset) {
-  currentWeekOffset += offset;
-  renderCalendar();
-}
-
-function renderCalendar() {
-  const today = new Date();
-  const monday = new Date(today);
-  const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  monday.setDate(today.getDate() + diff + (currentWeekOffset * 7));
-
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    days.push(d);
-  }
-
-  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const hours = [];
-  for (let h = 8; h <= 17; h++) {
-    hours.push(`${String(h).padStart(2,'0')}:00`);
-  }
-
-  const startStr = days[0].toLocaleDateString('en-GB');
-  const endStr   = days[6].toLocaleDateString('en-GB');
-  document.getElementById('week-label').textContent = `${startStr} — ${endStr}`;
-
-  const todayStr = today.toISOString().split('T')[0];
-
-  // Only show active appointments — completed/cancelled/no-show disappear
-  const activeApts = allAppointments.filter(
-    a => a.status !== 'Completed' && a.status !== 'Cancelled' && a.status !== 'No-show'
-  );
-
-  const borderColors = ['#93C5FD','#86EFAC','#FCD34D','#F9A8D4','#C4B5FD'];
-
-  let html = `<div style="display:grid;grid-template-columns:56px repeat(7,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;min-width:700px;">`;
-
-  // Header row
-  html += `<div style="background:var(--bg);border-bottom:2px solid var(--border);padding:10px 6px;"></div>`;
-  days.forEach((d, i) => {
-    const ds = d.toISOString().split('T')[0];
-    const isToday = ds === todayStr;
-    html += `<div style="background:${isToday ? '#EFF6FF' : 'var(--bg)'};border-bottom:2px solid var(--border);border-left:1px solid var(--border);padding:10px 6px;text-align:center;font-size:12px;font-weight:${isToday ? '700' : '600'};color:${isToday ? 'var(--primary)' : 'var(--text)'}">
-      ${dayNames[i]}<br><span style="font-size:14px;">${d.getDate()}</span>
-    </div>`;
-  });
-
-  // Hour rows
-  hours.forEach(hour => {
-    html += `<div style="border-bottom:1px solid var(--border);padding:6px;font-size:11px;color:var(--text-muted);background:var(--bg);white-space:nowrap;">${hour}</div>`;
-    days.forEach(d => {
-      const ds = d.toISOString().split('T')[0];
-      const apt = activeApts.find(a => {
-        const dt = new Date(a.appointment_datetime);
-        if (isNaN(dt.getTime())) return false;
-        const aptDate = dt.toISOString().split('T')[0];
-        const aptHour = `${String(dt.getUTCHours()).padStart(2,'0')}:00`;
-        return aptDate === ds && aptHour === hour;
-      });
-      if (apt) {
-        const colorIdx  = (apt.doctor_id - 1) % doctorColors.length;
-        const borderCol = borderColors[(apt.doctor_id - 1) % borderColors.length];
-        html += `<div onclick="openViewModal(${apt.appointment_id})"
-          style="border-bottom:1px solid var(--border);border-left:3px solid ${borderCol};padding:5px 6px;background:${doctorColors[colorIdx]};cursor:pointer;min-height:44px;transition:opacity .15s;"
-          onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
-          <div style="font-size:11px;font-weight:700;color:#1E293B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${apt.first_name ?? ''} ${apt.last_name ?? ''}</div>
-          <div style="font-size:10px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${apt.doctor_name ?? ''}</div>
-          <div style="font-size:10px;color:#64748B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic;">${apt.reason ?? ''}</div>
-        </div>`;
-      } else {
-        html += `<div style="border-bottom:1px solid var(--border);border-left:1px solid var(--border);min-height:44px;"></div>`;
-      }
-    });
-  });
-
-  html += `</div>`;
-  document.getElementById('calendar-grid').innerHTML = html;
-}
-
-// View modal (status tracker + role actions)
-let viewApprovedIds = new Set();
-
-function openViewModal(id) {
-  const a = allAppointments.find(x => x.appointment_id === id);
-  if (!a) return;
-
-  document.getElementById('vm-patient-name').textContent = `${a.first_name ?? ''} ${a.last_name ?? ''}`;
-  document.getElementById('vm-clinic-number').textContent = a.clinic_number ?? '—';
-  document.getElementById('vm-doctor').textContent = a.doctor_name ?? '—';
-  document.getElementById('vm-datetime').textContent =
-    `${formatDate(a.appointment_datetime)} ${formatTime(a.appointment_datetime)}`;
-  document.getElementById('vm-reason').textContent = a.reason ?? '—';
-
-  const isApproved = viewApprovedIds.has(id);
-  const status = a.status;
-
-  // Update step indicators
-  const dotPending   = document.getElementById('vm-dot-pending');
-  const dotApproved  = document.getElementById('vm-dot-approved');
-  const dotCompleted = document.getElementById('vm-dot-completed');
-  const line1 = document.getElementById('vm-line-1');
-  const line2 = document.getElementById('vm-line-2');
-
-  // Reset
-  [dotPending, dotApproved, dotCompleted].forEach(d => { d.style.background = '#E2E8F0'; });
-  [line1, line2].forEach(l => { l.style.background = 'var(--border)'; });
-  document.getElementById('vm-step-pending').style.color = 'var(--text-muted)';
-  document.getElementById('vm-step-approved').style.color = 'var(--text-muted)';
-  document.getElementById('vm-step-completed').style.color = 'var(--text-muted)';
-
-  if (status === 'Completed') {
-    dotPending.style.background = '#22C55E';
-    dotApproved.style.background = '#22C55E';
-    dotCompleted.style.background = '#22C55E';
-    line1.style.background = '#22C55E';
-    line2.style.background = '#22C55E';
-    document.getElementById('vm-step-pending').style.color = 'var(--text)';
-    document.getElementById('vm-step-approved').style.color = 'var(--text)';
-    document.getElementById('vm-step-completed').style.color = '#22C55E';
-    document.getElementById('vm-step-completed').style.fontWeight = '600';
-  } else if (isApproved) {
-    dotPending.style.background = '#22C55E';
-    dotApproved.style.background = '#2563EB';
-    line1.style.background = '#22C55E';
-    document.getElementById('vm-step-pending').style.color = 'var(--text)';
-    document.getElementById('vm-step-approved').style.color = '#2563EB';
-    document.getElementById('vm-step-approved').style.fontWeight = '600';
-  } else if (status === 'Scheduled') {
-    dotPending.style.background = '#F59E0B';
-    document.getElementById('vm-step-pending').style.color = '#F59E0B';
-    document.getElementById('vm-step-pending').style.fontWeight = '600';
-  } else {
-    dotPending.style.background = '#EF4444';
-    document.getElementById('vm-step-pending').style.color = '#EF4444';
-  }
-
-  // Action buttons
-  const actionsEl = document.getElementById('vm-actions');
-  actionsEl.innerHTML = '';
-
-  if (role === 'doctor' && status === 'Scheduled') {
-    if (!isApproved) {
-      const approveBtn = document.createElement('button');
-      approveBtn.className = 'btn btn-primary btn-sm';
-      approveBtn.textContent = 'Approve for Consultation';
-      approveBtn.onclick = () => { viewApprovedIds.add(id); closeViewModal(); openViewModal(id); };
-      actionsEl.appendChild(approveBtn);
-    } else {
-      const consultBtn = document.createElement('button');
-      consultBtn.className = 'btn btn-primary btn-sm';
-      consultBtn.textContent = 'Start Consultation';
-      consultBtn.onclick = () => { closeViewModal(); openConsultationModal(a); };
-      actionsEl.appendChild(consultBtn);
-    }
-  }
-
-  if (role === 'admin' || role === 'receptionist') {
-    if (status === 'Scheduled') {
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'btn btn-danger btn-sm';
-      cancelBtn.textContent = 'Cancel Appointment';
-      cancelBtn.onclick = () => { cancelAppointment(id); closeViewModal(); };
-      actionsEl.appendChild(cancelBtn);
-    }
-  }
-
-  document.getElementById('view-modal').classList.add('open');
-}
-
-function closeViewModal() {
-  document.getElementById('view-modal').classList.remove('open');
-}
-
-loadDoctorsForBooking();
-loadAppointments();
-
-// Consultation modal (doctor workflow)
-
-let consultationAppointment = null;
-
-function openConsultationModal(appt) {
-  consultationAppointment = appt;
-  document.getElementById('cons-title').textContent =
-    `Consultation — ${appt.first_name ?? ''} ${appt.last_name ?? ''}`;
-  document.getElementById('cons-patient-name').textContent =
-    `${appt.first_name ?? ''} ${appt.last_name ?? ''}`;
-  document.getElementById('cons-clinic-num').textContent  = appt.clinic_number ?? '—';
-  document.getElementById('cons-date').textContent        = formatDate(appt.appointment_datetime);
-  document.getElementById('cons-notes').value             = '';
-  document.getElementById('diagnoses-list').innerHTML     = '';
-  document.getElementById('prescriptions-list').innerHTML = '';
-  addDiagnosisRow();
-  addPrescriptionRow();
-  document.getElementById('consultation-modal').classList.add('open');
-}
-
-function closeConsultationModal() {
-  document.getElementById('consultation-modal').classList.remove('open');
-  consultationAppointment = null;
-}
-
-function addDiagnosisRow() {
-  const list = document.getElementById('diagnoses-list');
-  const row  = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-  row.innerHTML = `
-    <input type="text" class="form-control diagnosis-input"
-           placeholder="e.g. Plasmodium falciparum malaria — uncomplicated"
-           style="flex:1;">
-    <button type="button" class="btn btn-outline btn-sm"
-            onclick="this.parentElement.remove()"
-            style="padding:6px 10px;color:var(--danger);border-color:var(--danger);">Remove</button>
-  `;
-  list.appendChild(row);
-}
-
-function addPrescriptionRow() {
-  const list = document.getElementById('prescriptions-list');
-  const row  = document.createElement('div');
-  row.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:10px 12px;position:relative;';
-  row.innerHTML = `
-    <button type="button"
-            onclick="this.parentElement.remove()"
-            style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;line-height:1;">Remove</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div class="form-group" style="margin:0;">
-        <label class="form-label" style="font-size:11px;">Drug Name <span class="required">*</span></label>
-        <input type="text" class="form-control rx-drug" placeholder="e.g. Amoxicillin">
-      </div>
-      <div class="form-group" style="margin:0;">
-        <label class="form-label" style="font-size:11px;">Dosage</label>
-        <input type="text" class="form-control rx-dosage" placeholder="e.g. 500mg twice daily">
-      </div>
-      <div class="form-group" style="margin:0;">
-        <label class="form-label" style="font-size:11px;">Duration</label>
-        <input type="text" class="form-control rx-duration" placeholder="e.g. 7 days">
-      </div>
-    </div>
-  `;
-  list.appendChild(row);
-}
-
-async function submitConsultation() {
-  const appt = consultationAppointment;
-  if (!appt) return;
-
-  const notes = document.getElementById('cons-notes').value.trim();
-
-  const diagnoses = [...document.querySelectorAll('.diagnosis-input')]
-    .map(i => i.value.trim()).filter(Boolean);
-
-  const prescriptions = [...document.querySelectorAll('#prescriptions-list > div')]
-    .map(row => ({
-      drug_name: row.querySelector('.rx-drug')?.value.trim()     || '',
-      dosage:    row.querySelector('.rx-dosage')?.value.trim()   || '',
-      duration:  row.querySelector('.rx-duration')?.value.trim() || ''
-    }))
-    .filter(rx => rx.drug_name);
-
-  const rawDt = appt.appointment_datetime ?? '';
-  const parsedDt = new Date(rawDt);
-  const visitDate = isNaN(parsedDt.getTime())
-    ? new Date().toISOString().split('T')[0]
-    : parsedDt.toISOString().split('T')[0];
-
-  try {
-    await apiFetch('/api/consultations', {
-      method: 'POST',
-      body: JSON.stringify({
-        patient_id:     appt.patient_id,
-        doctor_id:      appt.doctor_id,
-        appointment_id: appt.appointment_id,
-        visit_date:     visitDate,
-        notes,
-        diagnoses,
-        prescriptions
-      })
-    });
-    closeConsultationModal();
-    showToast('Consultation saved — appointment completed', 'success');
-    loadAppointments();
-  } catch (e) {
-    showToast(e.message || 'Failed to save consultation', 'error');
-  }
-}
-
-// Auto-open booking modal and pre-select patient if redirected from registration.
-const prefillPatientId = sessionStorage.getItem('prefillAppointmentPatientId');
-if (prefillPatientId) {
-  sessionStorage.removeItem('prefillAppointmentPatientId');
-  // Wait for doctors to load then open modal with patient pre-filled
-  apiFetch(`/api/patients/${prefillPatientId}`).then(data => {
-    const p = data?.patient;
-    if (!p) return;
-    openBookingModal();
-    document.getElementById('selected-patient-id').value = p.patient_id;
-    document.getElementById('patient-search-input').value = `${p.first_name} ${p.last_name} (${p.clinic_number})`;
-    document.getElementById('selected-patient-display').textContent = `${p.first_name} ${p.last_name} selected`;
-  }).catch(() => openBookingModal());
-}
-
-</script>
+<script src="/assets/js/utils.js"></script>
+<script src="/appointments/appointments.js"></script>
 </body>
 </html>

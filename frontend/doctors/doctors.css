@@ -1,0 +1,147 @@
+.doctors-grid {
+	display: grid;
+	grid-template-columns: 1.2fr 0.8fr;
+	gap: 20px;
+}
+
+.panel {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	overflow: hidden;
+}
+
+.panel-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--border);
+	background: #f8fbff;
+}
+
+.panel-title {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--text);
+}
+
+.panel-subtitle {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.panel-body {
+	padding: 16px;
+}
+
+.doctor-row {
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+.doctor-row:hover {
+	background: #f8fbff;
+}
+
+.doctor-row.active {
+	background: #eff6ff;
+}
+
+.day-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.day-card {
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 10px;
+	background: #fff;
+}
+
+.day-name {
+	font-weight: 700;
+	font-size: 12px;
+	color: var(--text);
+	margin-bottom: 3px;
+}
+
+.day-time {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.empty-text {
+	font-size: 13px;
+	color: var(--text-muted);
+	padding: 14px;
+	text-align: center;
+	border: 1px dashed var(--border);
+	border-radius: 8px;
+	background: #fbfdff;
+}
+
+.is-hidden {
+	display: none;
+}
+
+.schedule-container {
+	margin-top: 12px;
+}
+
+.page-heading {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.page-subtitle {
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+.summary-strip {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.summary-card {
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 12px;
+	background: var(--surface);
+}
+
+.summary-label {
+	font-size: 11px;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+}
+
+.summary-value {
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--text);
+	margin-top: 4px;
+}
+
+@media (max-width: 960px) {
+	.doctors-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.day-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.summary-strip {
+		grid-template-columns: 1fr;
+	}
+}

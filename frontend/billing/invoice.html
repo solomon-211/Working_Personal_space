@@ -4,252 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoice - CCMS</title>
-  <link rel="stylesheet" href="../assets/css/style.css" />
-  <style>
-    .invoice-header {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .invoice-title {
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    .invoice-meta {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .meta-item {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      padding: var(--spacing-lg);
-    }
-
-    .meta-label {
-      font-size: 12px;
-      color: var(--text-light);
-      font-weight: 600;
-      text-transform: uppercase;
-      margin-bottom: var(--spacing-sm);
-    }
-
-    .meta-value {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .invoice-container {
-      background: white;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      padding: var(--spacing-lg);
-    }
-
-    .invoice-section {
-      margin-bottom: var(--spacing-lg);
-      padding-bottom: var(--spacing-lg);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .invoice-section:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: var(--text-light);
-      margin-bottom: var(--spacing-md);
-      letter-spacing: 0.5px;
-    }
-
-    /* Services Table */
-    .services-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .services-table th {
-      padding: var(--spacing-md);
-      text-align: left;
-      font-weight: 600;
-      background: var(--bg-light);
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
-
-    .services-table th.numeric {
-      text-align: right;
-    }
-
-    .services-table td {
-      padding: var(--spacing-md);
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
-
-    .services-table tbody tr:hover {
-      background: var(--bg-light);
-    }
-
-    .services-table input {
-      padding: 4px 8px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      font-size: 12px;
-    }
-
-    /* Totals */
-    .totals-section {
-      display: grid;
-      grid-template-columns: 1fr 300px;
-      gap: var(--spacing-lg);
-    }
-
-    .totals {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-    }
-
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--spacing-md);
-      background: var(--bg-light);
-      border-radius: var(--radius-md);
-    }
-
-    .total-row.grand {
-      background: var(--primary);
-      color: white;
-      font-weight: 700;
-      font-size: 16px;
-    }
-
-    .total-label {
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .total-row.grand .total-label {
-      color: white;
-    }
-
-    .total-value {
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .total-row.grand .total-value {
-      color: white;
-    }
-
-    /* Payments */
-    .payment-item {
-      display: grid;
-      grid-template-columns: 120px 100px 120px 120px 1fr;
-      gap: var(--spacing-md);
-      padding: var(--spacing-md);
-      background: var(--bg-light);
-      border-radius: var(--radius-md);
-      margin-bottom: var(--spacing-md);
-      align-items: center;
-    }
-
-    .payment-label {
-      font-size: 12px;
-      color: var(--text-light);
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    /* Actions */
-    .header-actions {
-      display: flex;
-      gap: var(--spacing-md);
-    }
-
-    .discount-input {
-      width: 80px;
-    }
-
-    .section-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .section-title-inline {
-      margin: 0;
-    }
-
-    @media (max-width: 1024px) {
-      .invoice-meta {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .totals-section {
-        grid-template-columns: 1fr;
-      }
-
-      .payment-item {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .invoice-meta {
-        grid-template-columns: 1fr;
-      }
-
-      .services-table,
-      .services-table thead,
-      .services-table tbody,
-      .services-table th,
-      .services-table td,
-      .services-table tr {
-        display: block;
-        width: 100%;
-      }
-
-      .services-table th {
-        display: none;
-      }
-
-      .services-table td {
-        text-align: right;
-        padding: var(--spacing-sm);
-      }
-
-      .services-table td:before {
-        content: attr(data-label);
-        float: left;
-        font-weight: 600;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="stylesheet" href="/billing/invoice.css" />
 </head>
 <body>
-  <!-- Header -->
   <header>
     <div class="logo">
       <div class="logo-icon">HB</div>
@@ -267,9 +25,8 @@
     </div>
   </header>
 
-  <!-- Sidebar -->
   <aside>
-    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">Menu</button>
     <nav>
       <ul>
         <li><a href="/dashboard/index.html"><span data-icon class="icon-dashboard"></span>Dashboard</a></li>
@@ -282,32 +39,30 @@
     </nav>
   </aside>
 
-  <!-- Main Content -->
   <main>
     <div class="invoice-header">
       <div>
         <div class="invoice-title" id="invoice-number">Invoice #</div>
       </div>
-      <div class="header-actions">
+      <div class="header-actions-row">
         <button class="btn btn-primary" onclick="window.print()">Print Invoice</button>
-        <button class="btn btn-secondary" onclick="history.back()">← Back</button>
+        <button class="btn btn-secondary" onclick="history.back()">Back</button>
       </div>
     </div>
 
-    <!-- Invoice Meta -->
     <div class="invoice-meta">
       <div class="meta-item">
         <div class="meta-label">Date</div>
-        <div class="meta-value" id="invoice-date">—</div>
+        <div class="meta-value" id="invoice-date">-</div>
       </div>
       <div class="meta-item">
         <div class="meta-label">Patient</div>
-        <div class="meta-value" id="invoice-patient">—</div>
+        <div class="meta-value" id="invoice-patient">-</div>
       </div>
       <div class="meta-item">
         <div class="meta-label">Status</div>
         <div class="meta-value">
-          <span id="invoice-status" class="status-badge">—</span>
+          <span id="invoice-status" class="status-badge">-</span>
         </div>
       </div>
       <div class="meta-item">
@@ -316,9 +71,7 @@
       </div>
     </div>
 
-    <!-- Invoice Container -->
     <div class="invoice-container">
-      <!-- Services Section -->
       <div class="invoice-section">
         <div class="section-title">Services</div>
         <table class="services-table">
@@ -334,7 +87,6 @@
         </table>
       </div>
 
-      <!-- Totals Section -->
       <div class="invoice-section">
         <div class="totals-section">
           <div></div>
@@ -355,7 +107,6 @@
         </div>
       </div>
 
-      <!-- Payment History Section -->
       <div class="invoice-section">
         <div class="section-header-row">
           <div class="section-title section-title-inline">Payment History</div>
@@ -366,159 +117,11 @@
     </div>
   </main>
 
-  <!-- Footer -->
   <footer>
-    CCMS © 2025 — HealthHub Bridge
+    CCMS © 2025 - HealthHub Bridge
   </footer>
 
-  <script src="../assets/js/utils.js"></script>
-  <script>
-    // Page bootstrap and route guard.
-    authGuard();
-    checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
-
-    // Invoice route parameter (required).
-    const invoiceId = new URLSearchParams(window.location.search).get('id');
-    if (!invoiceId) {
-      location.href = '/billing/index.html';
-    }
-
-    // Page-level invoice payload.
-    let invoiceData = {};
-
-    function toggleSidebar() {
-      document.querySelector('aside').classList.toggle('open');
-    }
-
-    // Data load + top-level rendering entry.
-    async function loadInvoice() {
-      try {
-        const response = await apiFetch(`/api/invoices/${invoiceId}`);
-        invoiceData = response.invoice;
-        renderInvoice();
-      } catch (error) {
-        showToast('Failed to load invoice', 'error');
-      }
-    }
-
-    // Master renderer for invoice header/meta + sections.
-    function renderInvoice() {
-      const inv = invoiceData;
-      const patientName = `${inv.first_name} ${inv.last_name}`;
-      const status = inv.payment_status;
-      const statusClass = status === 'Paid' ? 'success' : status === 'Partial' ? 'warning' : 'danger';
-
-      document.getElementById('invoice-number').textContent = `Invoice #INV-${String(inv.invoice_id).padStart(4,'0')}`;
-      document.getElementById('invoice-date').textContent = formatDate(inv.invoice_date);
-      document.getElementById('invoice-patient').textContent = `${patientName} (${inv.clinic_number})`;
-      document.getElementById('invoice-status').textContent = status;
-      document.getElementById('invoice-status').className = `status-badge status-${statusClass}`;
-      document.getElementById('invoice-due').textContent = formatCurrency(inv.amount_due);
-      document.getElementById('discount').value = inv.discount || 0;
-
-      renderServices();
-      renderPayments();
-      updateTotals();
-    }
-
-    // Services line items renderer.
-    function renderServices() {
-      const tbody = document.getElementById('services-tbody');
-      let html = '';
-      const services = invoiceData.items || invoiceData.services || [];
-
-      services.forEach(service => {
-        const subtotal = service.quantity * service.unit_price;
-        html += `
-          <tr>
-            <td>${service.service_name}</td>
-            <td style="text-align: right;">${service.quantity}</td>
-            <td style="text-align: right;">${formatCurrency(service.unit_price)}</td>
-            <td style="text-align: right;">${formatCurrency(subtotal)}</td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-    }
-
-    // Payment history renderer.
-    function renderPayments() {
-      const container = document.getElementById('payments-list');
-      const payments = invoiceData.payments || [];
-
-      if (!payments.length) {
-        container.innerHTML = '<p style="color: var(--text-light); padding: var(--spacing-lg); text-align: center;">No payments recorded</p>';
-        return;
-      }
-
-      let html = '';
-      payments.forEach(payment => {
-        html += `
-          <div class="payment-item">
-            <div>
-              <div class="payment-label">Date</div>
-              <div>${formatDate(payment.payment_date)}</div>
-            </div>
-            <div>
-              <div class="payment-label">Amount</div>
-              <div>${formatCurrency(payment.amount_paid)}</div>
-            </div>
-            <div>
-              <div class="payment-label">Method</div>
-              <div>${payment.payment_method || '—'}</div>
-            </div>
-            <div>
-              <div class="payment-label">Reference</div>
-              <div>${payment.reference_no || '—'}</div>
-            </div>
-            <div style="text-align: right;">
-              <div class="payment-label">Received By</div>
-              <div>${payment.received_by || '—'}</div>
-            </div>
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
-    }
-
-    // Totals calculation (subtotal, discount, amount due).
-    function updateTotals() {
-      const services = invoiceData.items || invoiceData.services || [];
-      const subtotal = services.reduce((sum, s) => sum + (s.quantity * s.unit_price), 0);
-      const discount = parseFloat(document.getElementById('discount').value) || 0;
-      const amountDue = Math.max(0, subtotal - discount);
-
-      document.getElementById('subtotal').textContent = formatCurrency(subtotal);
-      document.getElementById('amount-due').textContent = formatCurrency(amountDue);
-    }
-
-    // Add a payment record and refresh invoice details.
-    async function addPayment() {
-      const amount = prompt('Enter payment amount (SSP):');
-      if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
-      const method = prompt('Payment method (Cash/Card/Insurance):', 'Cash') || 'Cash';
-      const today = new Date().toISOString().split('T')[0];
-      try {
-        await apiFetch('/api/payments', {
-          method: 'POST',
-          body: JSON.stringify({
-            invoice_id: invoiceId,
-            amount_paid: parseFloat(amount),
-            payment_method: method,
-            payment_date: today
-          })
-        });
-        showToast('Payment recorded', 'success');
-        loadInvoice();
-      } catch (e) {
-        showToast(e.message || 'Failed to record payment', 'error');
-      }
-    }
-
-    // Initial load
-    loadInvoice();
-  </script>
+  <script src="/assets/js/utils.js"></script>
+  <script src="/billing/invoice.js"></script>
 </body>
 </html>

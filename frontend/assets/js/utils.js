@@ -79,11 +79,14 @@ function logout() {
  * @returns {Promise<object|null>} Parsed JSON response, or null on 401
  */
 async function apiFetch(endpoint, options = {}) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+
   const requestConfig = {
     ...options,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...defaultHeaders,
       ...(options.headers || {})
     }
   };
@@ -99,19 +102,39 @@ async function apiFetch(endpoint, options = {}) {
       return null;
     }
 
-    const data = await response.json();
+    // Parse defensively: some failures may return empty or non-JSON payloads.
+    const rawText = await response.text();
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    const looksLikeJson = contentType.includes('application/json') || rawText.trim().startsWith('{') || rawText.trim().startsWith('[');
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Request failed');
+    let data = null;
+    if (rawText) {
+      if (looksLikeJson) {
+        try {
+          data = JSON.parse(rawText);
+        } catch (_parseError) {
+          if (!response.ok) {
+            throw new Error(`Server returned an invalid JSON error response (HTTP ${response.status})`);
+          }
+        }
+      } else if (!response.ok) {
+        // For error cases, surface plain text from the server when available.
+        data = { error: rawText.trim() };
+      }
     }
 
-    return data;
+    if (!response.ok) {
+      const serverMessage = data?.error || data?.message;
+      throw new Error(serverMessage || `Request failed (HTTP ${response.status})`);
+    }
+
+    return data ?? {};
 
   } catch (error) {
-    if (error.name === 'TypeError') {
+    if (error && error.name === 'TypeError') {
       showToast('Cannot connect to server. Is Flask running?', 'error');
     } else {
-      showToast(error.message, 'error');
+      showToast((error && error.message) ? error.message : 'Unexpected error occurred', 'error');
     }
     console.error('API Error:', error);
     throw error;
@@ -420,7 +443,10 @@ function renderHeader() {
 
   return `
   <header class="header">
-    <div class="header-logo">HealthHub Bridge</div>
+    <div class="logo">
+      <div class="logo-icon">HB</div>
+      <div class="header-logo">HealthHub Bridge</div>
+    </div>
     <div class="header-right">
       <div class="header-user">
         <span style="font-size:13px;font-weight:500;">${username}</span>

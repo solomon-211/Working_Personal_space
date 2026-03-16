@@ -2,27 +2,30 @@ from flask import Blueprint, request, jsonify
 from config import get_db_connection
 from cache import cache_get, cache_set, cache_invalidate
 from routes.auth import login_required
+import mysql.connector
 
 patients_bp = Blueprint('patients', __name__)
 
 
+# route to get all patients, with optional search by name or clinic number
 @patients_bp.route('/patients', methods=['GET'])
 @login_required
 def get_patients():
-    """Return all patients, with optional search by name or clinic number."""
     search = request.args.get('search', '').strip()
 
+    # Build a cache key that includes the search term so different searches  are cached independently.
     cache_key = f'patients:{search}'
-    cached    = cache_get(cache_key)
+    cached = cache_get(cache_key)
     if cached:
+        # Serve from cache — no DB call needed
         return jsonify({'patients': cached, 'source': 'cache'}), 200
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
         if search:
-            like_pattern = f'%{search}%'
+            like = f'%{search}%'
             cursor.execute("""
                 SELECT patient_id, first_name, last_name, date_of_birth,
                        gender, phone, email, blood_type, clinic_number,
@@ -32,7 +35,7 @@ def get_patients():
                    OR last_name  LIKE %s
                    OR clinic_number LIKE %s
                 ORDER BY last_name
-            """, (like_pattern, like_pattern, like_pattern))
+            """, (like, like, like))
         else:
             cursor.execute("""
                 SELECT patient_id, first_name, last_name, date_of_birth,
@@ -43,30 +46,32 @@ def get_patients():
             """)
 
         patients = cursor.fetchall()
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not retrieve patients. Check connection.', 'details': str(error)}), 503
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not retrieve patients. Check connection.', 'details': str(e)}), 503
 
+    # Store in cache for 30 s
     cache_set(cache_key, patients)
     return jsonify({'patients': patients, 'source': 'db'}), 200
 
 
+# route to register a new patient
 @patients_bp.route('/patients', methods=['POST'])
 @login_required
 def register_patient():
-    """Register a new patient. Clinic number must be unique."""
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Validate required fields before touching the database
     required = ['first_name', 'last_name', 'date_of_birth', 'gender', 'clinic_number']
-    missing  = [field for field in required if not data.get(field)]
+    missing  = [f for f in required if not data.get(f)]
     if missing:
         return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor()
+        conn   = get_db_connection()
+        cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO patients (
                 first_name, last_name, date_of_birth, gender,
@@ -82,35 +87,38 @@ def register_patient():
             data.get('emergency_contact'), data.get('insurance_provider'),
             data.get('national_id'),       data['clinic_number']
         ))
-        connection.commit()
+        conn.commit()
         new_id = cursor.lastrowid
-        connection.close()
-    except Exception as error:
-        if hasattr(error, 'errno') and error.errno == 1062:
-            return jsonify({'error': f"Clinic number '{data['clinic_number']}' is already registered"}), 409
-        return jsonify({'error': 'Registration failed. Please try again.', 'details': str(error)}), 503
+        conn.close()
+    except mysql.connector.IntegrityError:
+        # Duplicate clinic_number — give a specific, helpful message
+        return jsonify({'error': f"Clinic number '{data['clinic_number']}' is already registered"}), 409
+    except Exception as e:
+        return jsonify({'error': 'Registration failed. Please try again.', 'details': str(e)}), 503
 
+    # Invalidate the patients list cache so the new patient appears
     cache_invalidate('patients')
+
     return jsonify({'id': new_id, 'clinic_number': data['clinic_number']}), 201
 
 
+# route to get a single patient by ID
 @patients_bp.route('/patients/<int:patient_id>', methods=['GET'])
 @login_required
 def get_patient(patient_id):
-    """Return a single patient record by ID."""
     cache_key = f'patients:id:{patient_id}'
-    cached    = cache_get(cache_key)
+    cached = cache_get(cache_key)
     if cached:
         return jsonify({'patient': cached, 'source': 'cache'}), 200
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor(dictionary=True)
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM patients WHERE patient_id = %s", (patient_id,))
         patient = cursor.fetchone()
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Could not retrieve patient.', 'details': str(error)}), 503
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not retrieve patient.', 'details': str(e)}), 503
 
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
@@ -119,40 +127,74 @@ def get_patient(patient_id):
     return jsonify({'patient': patient, 'source': 'db'}), 200
 
 
+# route to update patient info (only certain fields allowed for update)
 @patients_bp.route('/patients/<int:patient_id>', methods=['PATCH'])
 @login_required
 def update_patient(patient_id):
-    """Update allowed contact and insurance fields for a patient."""
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Only allow safe, updatable fields — never let the caller overwrite patient_id
     allowed_fields = ['phone', 'email', 'address', 'emergency_contact',
                       'insurance_provider', 'blood_type']
-    updates = {key: value for key, value in data.items() if key in allowed_fields}
+    updates = {k: v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
         return jsonify({'error': 'No valid fields provided to update'}), 400
 
-    set_clause = ', '.join(f"{column} = %s" for column in updates)
+    # Dynamically build the SET clause from whichever fields were sent
+    set_clause = ', '.join(f"{col} = %s" for col in updates)
     values     = list(updates.values()) + [patient_id]
 
     try:
-        connection = get_db_connection()
-        cursor     = connection.cursor()
+        conn   = get_db_connection()
+        cursor = conn.cursor()
         cursor.execute(
             f"UPDATE patients SET {set_clause} WHERE patient_id = %s",
             values
         )
-        connection.commit()
-        affected_rows = cursor.rowcount
-        connection.close()
-    except Exception as error:
-        return jsonify({'error': 'Update failed.', 'details': str(error)}), 503
+        conn.commit()
+        affected = cursor.rowcount
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Update failed.', 'details': str(e)}), 503
 
-    if affected_rows == 0:
+    if affected == 0:
         return jsonify({'error': 'Patient not found'}), 404
 
+    # Clear cache for this patient so next GET returns fresh data
     cache_invalidate(f'patients:id:{patient_id}')
     cache_invalidate('patients:')
+
     return jsonify({'message': 'Patient updated successfully'}), 200
+
+
+# route alias: /patients/<id>/prescriptions — matches what the profile page calls
+@patients_bp.route('/patients/<int:patient_id>/prescriptions', methods=['GET'])
+@login_required
+def get_patient_prescriptions(patient_id):
+    """Returns all prescriptions for a patient (alias for /prescriptions/<patient_id>)."""
+    cache_key = f'prescriptions:{patient_id}'
+    cached = cache_get(cache_key)
+    if cached:
+        return jsonify({'prescriptions': cached, 'source': 'cache'}), 200
+
+    try:
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT pr.prescription_id, pr.drug_name, pr.dosage, pr.duration,
+                   pr.end_time, v.visit_date
+            FROM prescriptions pr
+            JOIN medical_visits v ON pr.visit_id = v.visit_id
+            WHERE v.patient_id = %s
+            ORDER BY v.visit_date DESC
+        """, (patient_id,))
+        prescriptions = cursor.fetchall()
+        conn.close()
+    except Exception as e:
+        return jsonify({'error': 'Could not retrieve prescriptions.', 'details': str(e)}), 503
+
+    cache_set(cache_key, prescriptions)
+    return jsonify({'prescriptions': prescriptions, 'source': 'db'}), 200

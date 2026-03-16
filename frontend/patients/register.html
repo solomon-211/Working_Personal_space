@@ -4,295 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Register Patient — HealthHub Bridge</title>
-  <link rel="stylesheet" href="../assets/css/style.css" />
-  <style>
-    /* Hide panels by default; only the active one shows */
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    /* ── Wizard layout ── */
-    .wizard-container {
-      max-width: 760px;
-      margin: 0 auto;
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    /* ── Step indicator bar at the top of the wizard ── */
-    .wizard-steps {
-      display: flex;
-      align-items: center;
-      padding: 20px 32px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      gap: 0;
-    }
-
-    .wizard-step {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex: 1;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    /* Circular step number badge */
-    .wizard-step-number {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--border);
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 700;
-      flex-shrink: 0;
-      transition: background 0.2s, color 0.2s;
-    }
-
-    /* Active step gets a blue highlight */
-    .wizard-step.active .wizard-step-number {
-      background: var(--primary);
-      color: white;
-      box-shadow: 0 0 0 4px rgba(37,99,235,0.15);
-    }
-
-    .wizard-step.active { color: var(--primary); }
-
-    /* Completed steps turn green */
-    .wizard-step.completed .wizard-step-number {
-      background: var(--success);
-      color: white;
-    }
-
-    .wizard-step.completed { color: var(--text); }
-
-    /* Horizontal line connecting the step circles */
-    .wizard-divider {
-      flex: 1;
-      height: 2px;
-      background: var(--border);
-      margin: 0 16px;
-      border-radius: 2px;
-    }
-
-    /* ── Wizard content panels ── */
-    .wizard-content {
-      padding: 28px 32px 20px;
-    }
-
-    .wizard-content h2 {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .wizard-panel { display: none; }
-    .wizard-panel.active { display: block; }
-
-    /* ── Form grid layouts ── */
-    .form-grid-1 { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-
-    /* ── Form group inputs (scoped to wizard) ── */
-    .wizard-content .form-group { display: flex; flex-direction: column; gap: 4px; }
-
-    .wizard-content .form-group label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .wizard-content .form-group input,
-    .wizard-content .form-group select,
-    .wizard-content .form-group textarea {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 13px;
-      font-family: 'Inter', sans-serif;
-      outline: none;
-      background: white;
-      color: var(--text);
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-
-    /* Blue ring on focus */
-    .wizard-content .form-group input:focus,
-    .wizard-content .form-group select:focus,
-    .wizard-content .form-group textarea:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-    }
-
-    /* Red ring on validation error */
-    .wizard-content .form-group input.error,
-    .wizard-content .form-group select.error {
-      border-color: var(--danger);
-      box-shadow: 0 0 0 3px rgba(220,38,38,0.08);
-    }
-
-    /* ── Inline field error messages ── */
-    .field-error {
-      font-size: 11px;
-      color: var(--danger);
-      min-height: 14px;
-      margin-top: 2px;
-    }
-
-    /* ── Auto-generated clinic number preview box ── */
-    .clinic-preview {
-      background: #EFF6FF;
-      border: 1px dashed var(--primary);
-      border-radius: var(--radius);
-      padding: 10px 14px;
-      font-family: 'Courier New', monospace;
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--primary);
-      letter-spacing: 0.05em;
-    }
-
-    /* ── Consent checkbox row with yellow background ── */
-    .consent-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      background: #FFFBEB;
-      border: 1px solid #FDE68A;
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      margin-top: 16px;
-    }
-
-    .consent-row input[type="checkbox"] {
-      margin-top: 2px;
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
-
-    .consent-row label {
-      font-size: 12px;
-      color: #92400E;
-      line-height: 1.5;
-      cursor: pointer;
-    }
-
-    /* ── Wizard footer with Back / Next / Submit buttons ── */
-    .wizard-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      padding: 16px 32px;
-      border-top: 1px solid var(--border);
-      background: var(--bg);
-    }
-
-    /* ── Success modal overlay ── */
-    .success-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(15,23,42,0.55);
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      backdrop-filter: blur(2px);
-    }
-
-    /* Show the overlay when .show is added */
-    .success-overlay.show { display: flex; }
-
-    .success-box {
-      background: white;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 460px;
-      padding: 36px 32px 28px;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.18);
-      text-align: center;
-    }
-
-    /* Green circle with "OK" text */
-    .success-check {
-      width: 64px;
-      height: 64px;
-      background: linear-gradient(135deg, #16A34A, #15803D);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: white;
-      margin: 0 auto 16px;
-    }
-
-    .success-box h3 {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 8px;
-    }
-
-    .success-box p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 16px;
-    }
-
-    /* Monospace clinic number display in the success modal */
-    .success-clinic {
-      font-family: 'Courier New', monospace;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--primary);
-      background: #EFF6FF;
-      border: 1px solid #BFDBFE;
-      border-radius: var(--radius);
-      padding: 10px 20px;
-      display: inline-block;
-      margin-bottom: 20px;
-    }
-
-    .success-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    /* ── Responsive: stack two-column grids on small screens ── */
-    @media (max-width: 640px) {
-      .form-grid-2 { grid-template-columns: 1fr; }
-      .wizard-content { padding: 20px; }
-      .wizard-actions { padding: 14px 20px; }
-      .wizard-steps { padding: 16px 20px; }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="stylesheet" href="/patients/register.css" />
 </head>
 <body>
 
-<!-- Full-page loading spinner shown during API calls -->
 <div id="global-spinner" class="global-spinner-overlay">
   <span class="spinner spinner-dark spinner-lg"></span>
 </div>
 
 <div class="layout">
-  <!-- Header and sidebar are injected by JavaScript -->
   <div id="header-slot"></div>
   <div id="sidebar-slot"></div>
 
@@ -301,10 +22,7 @@
       <h1 class="page-title">Register Patient</h1>
     </div>
 
-    <!-- Two-step wizard container -->
     <div class="wizard-container">
-
-      <!-- Step indicator: shows which step is active or completed -->
       <div class="wizard-steps">
         <div class="wizard-step active" id="step-1-indicator">
           <div class="wizard-step-number">1</div>
@@ -317,13 +35,9 @@
         </div>
       </div>
 
-      <!-- Wizard panels — only the active one is visible -->
       <div class="wizard-content">
-
-        <!-- Step 1: Basic patient information -->
         <div class="wizard-panel active" id="step-1">
           <h2>Basic Information</h2>
-
           <div class="form-grid-2">
             <div class="form-group">
               <label for="firstName">First Name <span style="color:var(--danger)">*</span></label>
@@ -336,7 +50,6 @@
               <div class="field-error" id="lastName-error"></div>
             </div>
           </div>
-
           <div class="form-grid-2">
             <div class="form-group">
               <label for="date_of_birth">Date of Birth <span style="color:var(--danger)">*</span></label>
@@ -353,7 +66,6 @@
               </select>
             </div>
           </div>
-
           <div class="form-grid-2">
             <div class="form-group">
               <label for="phone">Phone <span style="color:var(--danger)">*</span></label>
@@ -366,7 +78,6 @@
               <div class="field-error" id="email-error"></div>
             </div>
           </div>
-
           <div class="form-grid-1">
             <div class="form-group">
               <label for="address">Address (Optional)</label>
@@ -375,10 +86,8 @@
           </div>
         </div>
 
-        <!-- Step 2: Medical details, emergency contact, and consent -->
         <div class="wizard-panel" id="step-2">
           <h2>Medical & Emergency Information</h2>
-
           <div class="form-grid-2">
             <div class="form-group">
               <label for="bloodType">Blood Type</label>
@@ -396,7 +105,6 @@
               <input type="text" id="insurance" placeholder="e.g. NHIF" />
             </div>
           </div>
-
           <div class="form-grid-2">
             <div class="form-group">
               <label for="emergency_contact_name">Emergency Contact Name</label>
@@ -407,7 +115,6 @@
               <input type="tel" id="emergency_contact_phone" placeholder="+211..." />
             </div>
           </div>
-
           <div class="form-grid-2">
             <div class="form-group">
               <label for="nationalId">National ID (Optional)</label>
@@ -415,13 +122,10 @@
             </div>
             <div class="form-group">
               <label>Clinic Number</label>
-              <!-- Auto-generated preview; user can override below -->
               <div class="clinic-preview" id="clinic-number-preview">CLN-0000</div>
               <input type="text" id="clinicNumber" placeholder="Leave blank for auto-generation" style="margin-top:6px;" />
             </div>
           </div>
-
-          <!-- Consent checkbox — required before submission -->
           <div class="consent-row">
             <input type="checkbox" id="consent" />
             <label for="consent">
@@ -430,10 +134,8 @@
           </div>
           <div class="field-error" id="consent-error"></div>
         </div>
-
       </div>
 
-      <!-- Navigation buttons at the bottom of the wizard -->
       <div class="wizard-actions">
         <button class="btn btn-outline" id="back-btn" onclick="previousStep()" style="display:none;">← Back</button>
         <button class="btn btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
@@ -443,7 +145,6 @@
   </main>
 </div>
 
-<!-- Success modal shown after a patient is registered successfully -->
 <div class="success-overlay" id="success-modal">
   <div class="success-box">
     <div class="success-check">OK</div>
@@ -458,198 +159,7 @@
   </div>
 </div>
 
-<script src="../assets/js/utils.js"></script>
-<script>
-  // Redirect to login if not authenticated
-  authGuard();
-  // Only receptionists and admins can access this page
-  checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
-
-  // Inject shared header and sidebar, then apply role-based visibility
-  document.getElementById('header-slot').outerHTML = renderHeader();
-  document.getElementById('sidebar-slot').outerHTML = renderSidebar('register');
-  applyRoleVisibility();
-  checkSessionTimeout();
-
-  // Track which wizard step we're on and hold form data between steps
-  let currentStep = 1;
-  let patientData = {};
-  let registeredClinicNumber = null;
-  let registeredPatientId = null;
-
-  // Move to a specific step and update the indicator bar
-  function setStep(step) {
-    currentStep = step;
-
-    // Toggle active class on the two wizard panels
-    document.getElementById('step-1').classList.toggle('active', step === 1);
-    document.getElementById('step-2').classList.toggle('active', step === 2);
-
-    // Update each step indicator: completed (green) or active (blue)
-    for (let i = 1; i <= 2; i++) {
-      const ind = document.getElementById(`step-${i}-indicator`);
-      ind.classList.remove('active', 'completed');
-      if (i < step) ind.classList.add('completed');
-      else if (i === step) ind.classList.add('active');
-    }
-
-    // Show/hide navigation buttons depending on the current step
-    document.getElementById('back-btn').style.display   = step === 1 ? 'none' : '';
-    document.getElementById('next-btn').style.display   = step === 2 ? 'none' : '';
-    document.getElementById('submit-btn').style.display = step === 2 ? '' : 'none';
-
-    // Generate a clinic number preview when the user reaches step 2
-    if (step === 2) generateClinicNumber();
-  }
-
-  function previousStep() {
-    if (currentStep > 1) setStep(currentStep - 1);
-  }
-
-  // Validate step 1 before advancing; save data if valid
-  function nextStep() {
-    if (!validateStep1()) return;
-    saveStep1();
-    setStep(2);
-  }
-
-  // Snapshot step 1 field values into patientData
-  function saveStep1() {
-    patientData = {
-      firstName:     document.getElementById('firstName').value,
-      lastName:      document.getElementById('lastName').value,
-      date_of_birth: document.getElementById('date_of_birth').value,
-      gender:        document.getElementById('gender').value,
-      phone:         document.getElementById('phone').value,
-      email:         document.getElementById('email').value,
-      address:       document.getElementById('address').value
-    };
-  }
-
-  // Check required fields and format rules for step 1
-  function validateStep1() {
-    const fields = {
-      firstName:     document.getElementById('firstName').value.trim(),
-      lastName:      document.getElementById('lastName').value.trim(),
-      date_of_birth: document.getElementById('date_of_birth').value,
-      phone:         document.getElementById('phone').value.trim(),
-      email:         document.getElementById('email').value.trim()
-    };
-
-    const errors = {};
-    if (!fields.firstName)     errors.firstName     = 'First name is required';
-    if (!fields.lastName)      errors.lastName      = 'Last name is required';
-    if (!fields.date_of_birth) errors.date_of_birth = 'Date of birth is required';
-    if (!fields.phone)         errors.phone         = 'Phone is required';
-    else if (!validatePhone(fields.phone)) errors.phone = 'Phone must be at least 7 characters';
-    if (fields.email && !validateEmail(fields.email)) errors.email = 'Invalid email format';
-
-    // Show or clear error messages and red borders for each field
-    ['firstName', 'lastName', 'date_of_birth', 'phone', 'email'].forEach(key => {
-      const errEl = document.getElementById(`${key}-error`);
-      const input = document.getElementById(key);
-      if (errors[key]) {
-        if (errEl) errEl.textContent = errors[key];
-        if (input) input.classList.add('error');
-      } else {
-        if (errEl) errEl.textContent = '';
-        if (input) input.classList.remove('error');
-      }
-    });
-
-    return Object.keys(errors).length === 0;
-  }
-
-  // Create a random 4-digit clinic number and show it in the preview box
-  function generateClinicNumber() {
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    registeredClinicNumber = `CLN-${random}`;
-    document.getElementById('clinic-number-preview').textContent = registeredClinicNumber;
-  }
-
-  // Build the payload and POST to the backend; show success modal on completion
-  async function submitForm() {
-    // Re-validate step 1 in case the user navigated back and changed something
-    if (!validateStep1()) { setStep(1); return; }
-
-    // Consent is mandatory
-    if (!document.getElementById('consent').checked) {
-      document.getElementById('consent-error').textContent = 'Consent is required to register the patient';
-      return;
-    }
-    document.getElementById('consent-error').textContent = '';
-
-    saveStep1();
-
-    // Combine step 1 and step 2 data into a single API payload
-    const payload = {
-      first_name:              patientData.firstName,
-      last_name:               patientData.lastName,
-      date_of_birth:           patientData.date_of_birth,
-      gender:                  patientData.gender,
-      phone:                   patientData.phone,
-      email:                   patientData.email,
-      address:                 patientData.address,
-      blood_type:         document.getElementById('bloodType').value,
-      emergency_contact:  [document.getElementById('emergency_contact_name').value, document.getElementById('emergency_contact_phone').value].filter(Boolean).join(' | '),
-      insurance_provider: document.getElementById('insurance').value,
-      national_id:             document.getElementById('nationalId').value,
-      clinic_number:           document.getElementById('clinicNumber').value || registeredClinicNumber
-    };
-
-    const btn = document.getElementById('submit-btn');
-    loadingState(btn, true);
-
-    try {
-      const response = await apiFetch('/api/patients', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      // Store the returned IDs so the success modal buttons can navigate correctly
-      registeredClinicNumber = response.clinic_number;
-      registeredPatientId    = response.id ?? response.patient_id;
-      document.getElementById('success-clinic-number').textContent = registeredClinicNumber;
-      document.getElementById('success-modal').classList.add('show');
-    } catch (error) {
-      showToast('Failed to register patient: ' + error.message, 'error');
-    } finally {
-      loadingState(btn, false);
-    }
-  }
-
-  // Navigate to the newly registered patient's profile page
-  function viewPatientProfile() {
-    if (registeredPatientId) location.href = `/patients/profile.html?id=${registeredPatientId}`;
-  }
-
-  // Pre-fill the appointment booking modal with this patient and redirect
-  function schedulePatientAppointment() {
-    if (registeredPatientId) sessionStorage.setItem('prefillAppointmentPatientId', String(registeredPatientId));
-    location.href = '/appointments/index.html';
-  }
-
-  // Reset all fields and go back to step 1 so another patient can be registered
-  function registerAnother() {
-    document.getElementById('success-modal').classList.remove('show');
-    document.getElementById('firstName').value = '';
-    document.getElementById('lastName').value = '';
-    document.getElementById('date_of_birth').value = '';
-    document.getElementById('gender').value = '';
-    document.getElementById('phone').value = '';
-    document.getElementById('email').value = '';
-    document.getElementById('address').value = '';
-    document.getElementById('bloodType').value = '';
-    document.getElementById('emergency_contact_name').value = '';
-    document.getElementById('emergency_contact_phone').value = '';
-    document.getElementById('insurance').value = '';
-    document.getElementById('nationalId').value = '';
-    document.getElementById('clinicNumber').value = '';
-    document.getElementById('consent').checked = false;
-    setStep(1);
-  }
-
-  // Start on step 1 when the page loads
-  setStep(1);
-</script>
+<script src="/assets/js/utils.js"></script>
+<script src="/patients/register.js"></script>
 </body>
 </html>
