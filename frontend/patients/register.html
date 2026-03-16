@@ -9,6 +9,7 @@
 </head>
 <body>
 
+<!-- Full-page spinner shown while the form is submitting -->
 <div id="global-spinner" class="global-spinner-overlay">
   <span class="spinner spinner-dark spinner-lg"></span>
 </div>
@@ -22,7 +23,10 @@
       <h1 class="page-title">Register Patient</h1>
     </div>
 
+    <!-- 2-step wizard — register.js controls which panel is visible -->
     <div class="wizard-container">
+
+      <!-- Step indicators at the top of the wizard -->
       <div class="wizard-steps">
         <div class="wizard-step active" id="step-1-indicator">
           <div class="wizard-step-number">1</div>
@@ -36,6 +40,8 @@
       </div>
 
       <div class="wizard-content">
+
+        <!-- Step 1: personal details -->
         <div class="wizard-panel active" id="step-1">
           <h2>Basic Information</h2>
           <div class="form-grid-2">
@@ -86,6 +92,7 @@
           </div>
         </div>
 
+        <!-- Step 2: medical info, emergency contact, and consent checkbox -->
         <div class="wizard-panel" id="step-2">
           <h2>Medical & Emergency Information</h2>
           <div class="form-grid-2">
@@ -122,10 +129,12 @@
             </div>
             <div class="form-group">
               <label>Clinic Number</label>
+              <!-- Live preview of the auto-generated clinic number -->
               <div class="clinic-preview" id="clinic-number-preview">CLN-0000</div>
               <input type="text" id="clinicNumber" placeholder="Leave blank for auto-generation" style="margin-top:6px;" />
             </div>
           </div>
+          <!-- Consent must be checked before the form can be submitted -->
           <div class="consent-row">
             <input type="checkbox" id="consent" />
             <label for="consent">
@@ -134,17 +143,21 @@
           </div>
           <div class="field-error" id="consent-error"></div>
         </div>
+
       </div>
 
+      <!-- Navigation buttons — register.js shows/hides these based on the current step -->
       <div class="wizard-actions">
         <button class="btn btn-outline" id="back-btn" onclick="previousStep()" style="display:none;">← Back</button>
         <button class="btn btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
         <button class="btn btn-success" id="submit-btn" onclick="submitForm()" style="display:none;">Register Patient</button>
       </div>
+
     </div>
   </main>
 </div>
 
+<!-- Success overlay shown after a patient is registered successfully -->
 <div class="success-overlay" id="success-modal">
   <div class="success-box">
     <div class="success-check">OK</div>

@@ -10,9 +10,10 @@
 
 <div class="login-page">
   <div class="login-card">
-    <!-- Logo and Branding -->
+
+    <!-- Clinic branding at the top of the card -->
     <div class="login-logo">
-      <!-- HB Logo with blue background -->
+      <!-- Blue square logo with HB initials -->
       <div style="width:80px;height:80px;background:#2563EB;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
         <span style="font-size:32px;font-weight:700;color:white;">HB</span>
       </div>
@@ -20,17 +21,17 @@
       <p>Community Clinic Management System</p>
     </div>
 
-    <!-- Error Message Display -->
+    <!-- This div stays hidden until login.js puts an error message in it -->
     <div id="login-error" style="display:none;background:#FEE2E2;color:#B91C1C;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:16px;"></div>
 
-    <!-- Username Input -->
+    <!-- Username field -->
     <div class="form-group">
       <label class="form-label">Username <span class="required">*</span></label>
       <input type="text" id="username" class="form-control" placeholder="e.g. amina.lado" autofocus>
       <div class="form-error" id="username-error">Username is required</div>
     </div>
 
-    <!-- Password Input with Show/Hide Toggle -->
+    <!-- Password field with a show/hide toggle button -->
     <div class="form-group">
       <label class="form-label">Password <span class="required">*</span></label>
       <div style="position:relative">
@@ -40,7 +41,7 @@
       <div class="form-error" id="password-error">Password is required</div>
     </div>
 
-    <!-- Remember Me and Forgot Password -->
+    <!-- Remember me checkbox and forgot password link -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
         <input type="checkbox" id="remember"> Remember me
@@ -48,8 +49,9 @@
       <a href="#" style="font-size:13px;color:var(--primary);text-decoration:none;">Forgot password?</a>
     </div>
 
-    <!-- Login Button -->
+    <!-- Login button — calls handleLogin() in login.js -->
     <button class="btn btn-primary" id="login-btn" onclick="handleLogin()" style="width:100%;justify-content:center;padding:10px;">Login</button>
+
   </div>
 </div>
 

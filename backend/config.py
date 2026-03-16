@@ -1,41 +1,5 @@
 import os
 
-
-def _load_env_file() -> None:
-    """Load backend/.env so DB credentials are available in all entrypoints."""
-    env_path = os.path.join(os.path.dirname(__file__), '.env')
-    if not os.path.exists(env_path):
-        return
-
-    # Prefer python-dotenv when available.
-    try:
-        import importlib
-        dotenv = importlib.import_module('dotenv')
-        load_dotenv = getattr(dotenv, 'load_dotenv', None)
-        if callable(load_dotenv):
-            load_dotenv(env_path)
-            return
-    except Exception:
-        pass
-
-    # Fallback parser when python-dotenv is unavailable.
-    try:
-        with open(env_path, 'r', encoding='utf-8') as f:
-            for raw in f:
-                line = raw.strip()
-                if not line or line.startswith('#') or '=' not in line:
-                    continue
-                key, value = line.split('=', 1)
-                key = key.strip()
-                value = value.strip().strip('"').strip("'")
-                os.environ.setdefault(key, value)
-    except Exception:
-        # Keep defaults from Config if file parsing fails.
-        pass
-
-
-_load_env_file()
-
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'healthbridge-dev-secret-key')
 

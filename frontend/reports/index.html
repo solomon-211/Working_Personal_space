@@ -3,140 +3,124 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reports - CCMS</title>
+  <title>Reports — CCMS</title>
   <link rel="stylesheet" href="/assets/css/style.css" />
   <link rel="stylesheet" href="/reports/reports.css" />
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <div class="logo-icon">HB</div>
-      HealthHub Bridge
-    </div>
-    <div class="header-search">
-      <input type="text" placeholder="Global search..." />
-    </div>
-    <div class="header-actions">
-      <div class="user-info">
-        <span class="user-name" id="user-name">User</span>
-        <span class="role-badge" id="user-role">Guest</span>
-      </div>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-  </header>
 
-  <aside>
-    <button class="sidebar-toggle" onclick="toggleSidebar()">Menu</button>
-    <nav>
-      <ul>
-        <li><a href="/dashboard/index.html"><span data-icon class="icon-dashboard"></span>Dashboard</a></li>
-        <li data-role="receptionist,doctor,admin"><a href="/patients/list.html"><span data-icon class="icon-patients"></span>Patients</a></li>
-        <li data-role="receptionist,admin"><a href="/patients/register.html"><span data-icon class="icon-add"></span>Register Patient</a></li>
-        <li data-role="receptionist,doctor,admin"><a href="/appointments/index.html"><span data-icon class="icon-appointments"></span>Appointments</a></li>
-        <li data-role="receptionist,admin"><a href="/billing/index.html"><span data-icon class="icon-billing"></span>Billing</a></li>
-        <li data-role="admin"><a href="/reports/index.html" class="active"><span data-icon class="icon-reports"></span>Reports</a></li>
-      </ul>
-    </nav>
-  </aside>
+<!-- Full-page spinner shown while report data is being fetched -->
+<div id="global-spinner" class="global-spinner-overlay">
+  <span class="spinner spinner-dark spinner-lg"></span>
+</div>
 
-  <main>
-    <div class="page-header">
+<div class="layout">
+  <!-- Header and sidebar injected by reports.js via utils.js -->
+  <div id="header-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <main class="main">
+
+    <div class="page-header" style="grid-column:1/-1;">
       <div class="page-heading">
         <h1 class="page-title">Reports</h1>
-        <p class="page-subtitle">Generate patient, financial, clinical, and operational insights</p>
+        <p class="page-subtitle">Generate financial, clinical, and operational insights</p>
       </div>
     </div>
 
+    <!-- Left sidebar panel: report type tabs and date range inputs -->
     <div class="sidebar-panel">
       <h3 class="panel-heading">Report Generator</h3>
 
+      <!-- Tab buttons — reports.js hides Financial, Operational, and Patient tabs for doctors -->
       <div class="report-tabs">
-        <button class="report-tab active" onclick="switchReport('patient', this)">Patient Reports</button>
-        <button class="report-tab" onclick="switchReport('financial', this)">Financial</button>
+        <button class="report-tab active" onclick="switchReport('financial', this)">Financial</button>
         <button class="report-tab" onclick="switchReport('clinical', this)">Clinical</button>
         <button class="report-tab" onclick="switchReport('operational', this)">Operational</button>
+        <button class="report-tab" onclick="switchReport('patient', this)">Patients</button>
       </div>
 
-      <div class="report-panel active" id="patient">
+      <!-- Financial report panel: calls /api/reports/financial with the selected date range -->
+      <div class="report-panel active" id="panel-financial">
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From</label>
-          <input type="date" id="pat-from" title="Patient report start date" />
+          <input type="date" id="fin-from" class="form-control" />
         </div>
         <div class="form-group">
           <label>Date To</label>
-          <input type="date" id="pat-to" title="Patient report end date" />
+          <input type="date" id="fin-to" class="form-control" />
         </div>
-        <button class="btn btn-primary generate-btn" onclick="generateReport('patient')">
-          Generate Report
-        </button>
+        <button class="btn btn-primary generate-btn" onclick="generateReport('financial')">Generate Report</button>
       </div>
 
-      <div class="report-panel" id="financial">
+      <!-- Clinical report panel: calls /api/reports/clinical — accessible to both admin and doctor -->
+      <div class="report-panel" id="panel-clinical">
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From</label>
-          <input type="date" id="fin-from" title="Financial report start date" />
+          <input type="date" id="cli-from" class="form-control" />
         </div>
         <div class="form-group">
           <label>Date To</label>
-          <input type="date" id="fin-to" title="Financial report end date" />
+          <input type="date" id="cli-to" class="form-control" />
         </div>
-        <button class="btn btn-primary generate-btn" onclick="generateReport('financial')">
-          Generate Report
-        </button>
+        <button class="btn btn-primary generate-btn" onclick="generateReport('clinical')">Generate Report</button>
       </div>
 
-      <div class="report-panel" id="clinical">
+      <!-- Operational report panel: calls /api/reports/operational -->
+      <div class="report-panel" id="panel-operational">
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From</label>
-          <input type="date" id="cli-from" title="Clinical report start date" />
+          <input type="date" id="op-from" class="form-control" />
         </div>
         <div class="form-group">
           <label>Date To</label>
-          <input type="date" id="cli-to" title="Clinical report end date" />
+          <input type="date" id="op-to" class="form-control" />
         </div>
-        <button class="btn btn-primary generate-btn" onclick="generateReport('clinical')">
-          Generate Report
-        </button>
+        <button class="btn btn-primary generate-btn" onclick="generateReport('operational')">Generate Report</button>
       </div>
 
-      <div class="report-panel" id="operational">
+      <!-- Patient report panel: built client-side from /api/patients — date range is optional -->
+      <div class="report-panel" id="panel-patient">
         <div class="divider"></div>
         <div class="form-group">
-          <label>Date From</label>
-          <input type="date" id="op-from" title="Operational report start date" />
+          <label>Date From (optional)</label>
+          <input type="date" id="pat-from" class="form-control" />
         </div>
         <div class="form-group">
-          <label>Date To</label>
-          <input type="date" id="op-to" title="Operational report end date" />
+          <label>Date To (optional)</label>
+          <input type="date" id="pat-to" class="form-control" />
         </div>
-        <button class="btn btn-primary generate-btn" onclick="generateReport('operational')">
-          Generate Report
-        </button>
+        <button class="btn btn-primary generate-btn" onclick="generateReport('patient')">Generate Report</button>
       </div>
+
     </div>
 
+    <!-- Right results panel: placeholder shown until a report is generated -->
     <div class="results-panel">
+
+      <!-- Shown by default — hidden once generateReport() runs successfully -->
       <div class="results-placeholder" id="results-placeholder">
         <div class="results-placeholder-icon"></div>
-        <div class="results-placeholder-text">Select a report type and date range to generate your report.</div>
+        <div class="results-placeholder-text">Select a report type and date range, then click Generate.</div>
       </div>
 
+      <!-- Results area: summary cards, optional chart, and detail table -->
+      <!-- reports.js toggles this visible and populates each section -->
       <div id="results-content" class="hidden">
         <div id="summary-cards"></div>
         <div id="chart-container"></div>
         <div id="detail-table"></div>
       </div>
+
     </div>
+
   </main>
+</div>
 
-  <footer>
-    CCMS © 2025 — HealthHub Bridge
-  </footer>
-
-  <script src="/assets/js/utils.js"></script>
-  <script src="/reports/reports.js"></script>
+<script src="/assets/js/utils.js"></script>
+<script src="/reports/reports.js"></script>
 </body>
 </html>

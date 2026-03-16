@@ -8,31 +8,30 @@
 </head>
 <body>
 
-<!-- Global Loading Spinner -->
+<!-- Full-page spinner shown while data is loading -->
 <div id="global-spinner" class="global-spinner-overlay">
   <span class="spinner spinner-dark spinner-lg"></span>
 </div>
 
-<!-- Main Layout Container -->
+<!-- Main layout wrapper — sidebar and header are injected by JS -->
 <div class="layout">
-  <!-- Header will be injected here by JavaScript -->
+
+  <!-- These slots get replaced by renderHeader() and renderSidebar() in utils.js -->
   <div id="header-slot"></div>
-  
-  <!-- Sidebar will be injected here by JavaScript -->
   <div id="sidebar-slot"></div>
 
-  <!-- Main Content Area -->
   <main class="main">
-    <!-- Page Header with Title and Actions -->
+
+    <!-- Page title row — admin users also get a quick link to Reports -->
     <div class="page-header">
       <h1 class="page-title" id="dash-title">Dashboard</h1>
-      <!-- Admin-only quick link to reports -->
+      <!-- Only visible to admins via applyRoleVisibility() -->
       <div data-role="admin">
         <a href="/reports/index.html" class="btn btn-outline btn-sm">Reports</a>
       </div>
     </div>
 
-    <!-- Statistics Cards Grid -->
+    <!-- Summary stat cards — revenue and outstanding are hidden for doctors -->
     <div class="stats-grid" id="stats-grid">
       <div class="stat-card">
         <div class="stat-card-value" id="stat-patients">—</div>
@@ -42,6 +41,7 @@
         <div class="stat-card-value" id="stat-appointments">—</div>
         <div class="stat-card-label">Upcoming Appointments</div>
       </div>
+      <!-- These two cards are hidden for doctors via data-role -->
       <div class="stat-card" data-role="admin,receptionist">
         <div class="stat-card-value" id="stat-revenue">—</div>
         <div class="stat-card-label">Total Revenue</div>
@@ -52,6 +52,7 @@
       </div>
     </div>
 
+    <!-- Payment overview bar chart / breakdown — rendered by dashboard.js -->
     <div class="card" style="margin-bottom:24px;">
       <div class="card-title">Payment Overview</div>
       <div id="payment-overview">
@@ -59,11 +60,12 @@
       </div>
     </div>
 
-    <!-- Two Column Layout for Appointments and Patients -->
+    <!-- Two-column section: upcoming appointments on the left, recent patients on the right -->
     <div class="dashboard-main-grid">
-      <!-- Today's Appointments Section -->
+
+      <!-- Scheduled appointments list — populated by dashboard.js -->
       <div class="card">
-        <div class="card-title">Upcoming Appointments</div>
+        <div class="card-title">Scheduled Appointments</div>
         <div id="today-appointments">
           <div class="empty-state">
             <div class="empty-state-text">Loading...</div>
@@ -76,7 +78,7 @@
         </div>
       </div>
 
-      <!-- Recent Patients Section -->
+      <!-- Recent patients list — populated by dashboard.js -->
       <div class="card">
         <div class="card-title" id="right-panel-title">Recent Patients</div>
         <div id="recent-patients">
@@ -90,6 +92,7 @@
           </a>
         </div>
       </div>
+
     </div>
   </main>
 </div>

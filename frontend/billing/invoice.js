@@ -1,143 +1,107 @@
+// Make sure the user is logged in before anything else runs
 authGuard();
 checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
-applyRoleVisibility();
 checkSessionTimeout();
 
-const currentUsername = sessionStorage.getItem('name') || 'User';
-const currentRole = sessionStorage.getItem('role') || 'Guest';
-document.getElementById('user-name').textContent = currentUsername;
-document.getElementById('user-role').textContent = currentRole;
-document.getElementById('user-role').classList.add(currentRole);
+// Inject the shared header and sidebar, then apply role-based visibility
+document.getElementById('header-slot').outerHTML = renderHeader();
+document.getElementById('sidebar-slot').outerHTML = renderSidebar('billing');
+applyRoleVisibility();
 
+// Pull the invoice ID from the URL — if it's missing, send them back to billing
 const invoiceId = new URLSearchParams(window.location.search).get('id');
-if (!invoiceId) {
-  location.href = '/billing/index.html';
-}
+if (!invoiceId) location.href = '/billing/index.html';
 
-let invoiceData = {};
-
-function toggleSidebar() {
-  document.querySelector('aside').classList.toggle('open');
-}
+// We'll store the loaded invoice here so other functions can reference it
+let invoiceData = null;
 
 async function loadInvoice() {
   try {
-    const response = await apiFetch(`/api/invoices/${invoiceId}`);
-    invoiceData = response.invoice;
+    const res = await apiFetch(`/api/invoices/${invoiceId}`);
+    invoiceData = res.invoice;
     renderInvoice();
-  } catch (error) {
+  } catch (e) {
     showToast('Failed to load invoice', 'error');
   }
 }
 
 function renderInvoice() {
   const inv = invoiceData;
-  const patientName = `${inv.first_name} ${inv.last_name}`;
-  const status = inv.payment_status;
-  const statusClass = status === 'Paid' ? 'success' : status === 'Partial' ? 'warning' : 'danger';
+  const patientName = `${inv.first_name} ${inv.last_name} (${inv.clinic_number})`;
 
-  document.getElementById('invoice-number').textContent = `Invoice #INV-${String(inv.invoice_id).padStart(4, '0')}`;
-  document.getElementById('invoice-date').textContent = formatDate(inv.invoice_date);
-  document.getElementById('invoice-patient').textContent = `${patientName} (${inv.clinic_number})`;
-  document.getElementById('invoice-status').textContent = status;
-  document.getElementById('invoice-status').className = `status-badge status-${statusClass}`;
-  document.getElementById('invoice-due').textContent = formatCurrency(inv.amount_due);
-  document.getElementById('discount').value = inv.discount || 0;
+  // Fill in all the invoice header fields
+  document.getElementById('invoice-number').textContent = `Invoice #INV-${String(inv.invoice_id).padStart(4,'0')}`;
+  document.getElementById('invoice-patient').textContent = patientName;
+  document.getElementById('invoice-date').textContent    = formatDate(inv.invoice_date);
+  document.getElementById('invoice-status').outerHTML    = `<span id="invoice-status">${renderBadge(inv.payment_status)}</span>`;
+  document.getElementById('invoice-total').textContent   = formatCurrency(inv.total_amount);
+  document.getElementById('invoice-due').textContent     = formatCurrency(inv.amount_due);
+  document.getElementById('subtotal').textContent        = formatCurrency(inv.total_amount);
+  document.getElementById('discount-display').textContent = formatCurrency(inv.discount || 0);
+  document.getElementById('amount-due').textContent      = formatCurrency(inv.amount_due);
+  document.title = `INV-${String(inv.invoice_id).padStart(4,'0')} — CCMS`;
 
-  renderServices();
-  renderPayments();
-  updateTotals();
+  // Only show the "Add Payment" button if the invoice hasn't been fully paid yet
+  if (inv.payment_status !== 'Paid') {
+    document.getElementById('add-payment-btn').style.display = '';
+  }
+
+  renderServices(inv.items || []);
+
+  // The GET /api/invoices/:id endpoint doesn't return payment history,
+  // so we just show a placeholder message in that section
+  const paymentsSection = document.getElementById('payments-list');
+  if (paymentsSection) paymentsSection.innerHTML = '<p class="payment-empty">Payment history not available on this view.</p>';
 }
 
-function renderServices() {
+function renderServices(items) {
   const tbody = document.getElementById('services-tbody');
-  let html = '';
-  const services = invoiceData.items || invoiceData.services || [];
 
-  services.forEach((service) => {
-    const subtotal = service.quantity * service.unit_price;
-    html += `
-      <tr>
-        <td data-label="Service">${service.service_name}</td>
-        <td class="numeric" data-label="Qty">${service.quantity}</td>
-        <td class="numeric" data-label="Unit Price">${formatCurrency(service.unit_price)}</td>
-        <td class="numeric" data-label="Subtotal">${formatCurrency(subtotal)}</td>
-      </tr>
-    `;
-  });
-
-  tbody.innerHTML = html;
-}
-
-function renderPayments() {
-  const container = document.getElementById('payments-list');
-  const payments = invoiceData.payments || [];
-
-  if (!payments.length) {
-    container.innerHTML = '<p class="payment-empty">No payments recorded</p>';
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">No services recorded</div></div></td></tr>';
     return;
   }
 
-  let html = '';
-  payments.forEach((payment) => {
-    html += `
-      <div class="payment-item">
-        <div>
-          <div class="payment-label">Date</div>
-          <div>${formatDate(payment.payment_date)}</div>
-        </div>
-        <div>
-          <div class="payment-label">Amount</div>
-          <div>${formatCurrency(payment.amount_paid)}</div>
-        </div>
-        <div>
-          <div class="payment-label">Method</div>
-          <div>${payment.payment_method || '-'}</div>
-        </div>
-        <div>
-          <div class="payment-label">Reference</div>
-          <div>${payment.reference_no || '-'}</div>
-        </div>
-        <div class="payment-right">
-          <div class="payment-label">Received By</div>
-          <div>${payment.received_by || '-'}</div>
-        </div>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
+  tbody.innerHTML = items.map(item => `
+    <tr>
+      <td data-label="Service">${item.service_name}</td>
+      <td data-label="Category">${item.category || '—'}</td>
+      <td class="numeric" data-label="Qty">${item.quantity}</td>
+      <td class="numeric" data-label="Unit Price">${formatCurrency(item.unit_price)}</td>
+      <td class="numeric" data-label="Subtotal">${formatCurrency(item.subtotal)}</td>
+    </tr>`).join('');
 }
 
-function updateTotals() {
-  const services = invoiceData.items || invoiceData.services || [];
-  const subtotal = services.reduce((sum, s) => sum + (s.quantity * s.unit_price), 0);
-  const discount = parseFloat(document.getElementById('discount').value) || 0;
-  const amountDue = Math.max(0, subtotal - discount);
-
-  document.getElementById('subtotal').textContent = formatCurrency(subtotal);
-  document.getElementById('amount-due').textContent = formatCurrency(amountDue);
+function openPaymentModal() {
+  // Clear out any previous values before showing the modal
+  document.getElementById('pay-amount').value = '';
+  document.getElementById('pay-method').value = 'Cash';
+  document.getElementById('pay-ref').value    = '';
+  showModal('payment-modal');
 }
 
-async function addPayment() {
-  const amount = prompt('Enter payment amount (SSP):');
-  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+async function submitPayment() {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  const method = document.getElementById('pay-method').value;
+  const ref    = document.getElementById('pay-ref').value.trim();
 
-  const method = prompt('Payment method (Cash/Card/Insurance):', 'Cash') || 'Cash';
-  const today = new Date().toISOString().split('T')[0];
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
 
   try {
     await apiFetch('/api/payments', {
       method: 'POST',
       body: JSON.stringify({
-        invoice_id: invoiceId,
-        amount_paid: parseFloat(amount),
+        invoice_id:     parseInt(invoiceId),
+        amount_paid:    amount,
         payment_method: method,
-        payment_date: today
+        payment_date:   new Date().toISOString().split('T')[0],
+        reference_no:   ref,
+        received_by:    sessionStorage.getItem('name') || ''
       })
     });
-
+    hideModal('payment-modal');
     showToast('Payment recorded', 'success');
+    // Reload the invoice so the status and due amount update
     loadInvoice();
   } catch (e) {
     showToast(e.message || 'Failed to record payment', 'error');

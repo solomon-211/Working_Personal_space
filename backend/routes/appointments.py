@@ -11,13 +11,12 @@ appointments_bp = Blueprint('appointments', __name__)
 @appointments_bp.route('/appointments', methods=['GET'])
 @login_required
 def get_appointments():
-    # Optional filters from query string: ?patient_id=1&doctor_id=1&status=Scheduled&date=2025-06-10
-    patient_id = request.args.get('patient_id')
-    doctor_id  = request.args.get('doctor_id')
-    status     = request.args.get('status')
-    appt_date  = request.args.get('date')
+    # Optional filters from query string: ?doctor_id=1&status=Scheduled&date=2025-06-10
+    doctor_id = request.args.get('doctor_id')
+    status    = request.args.get('status')
+    appt_date = request.args.get('date')
 
-    cache_key = f'appointments:{patient_id}:{doctor_id}:{status}:{appt_date}'
+    cache_key = f'appointments:{doctor_id}:{status}:{appt_date}'
     cached = cache_get(cache_key)
     if cached:
         return jsonify({'appointments': cached, 'source': 'cache'}), 200
@@ -34,9 +33,6 @@ def get_appointments():
     """
     params = []
 
-    if patient_id:
-        query += " AND a.patient_id = %s"
-        params.append(patient_id)
     if doctor_id:
         query += " AND a.doctor_id = %s"
         params.append(doctor_id)
@@ -83,8 +79,6 @@ def get_today_appointments():
             JOIN patients p ON a.patient_id = p.patient_id
             JOIN doctors  d ON a.doctor_id  = d.doctor_id
             WHERE DATE(a.appointment_datetime) = CURDATE()
-              AND a.status = 'Scheduled'
-              AND a.appointment_datetime >= NOW()
             ORDER BY a.appointment_datetime
         """)
         appointments = cursor.fetchall()

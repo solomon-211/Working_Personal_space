@@ -172,9 +172,6 @@ function clearAptSearch() {
   input.focus();
 }
 
-function applyFilters() {}
-function clearFilters() {}
-
 async function cancelAppointment(id) {
   if (!confirm('Are you sure you want to cancel this appointment?')) return;
 
@@ -187,20 +184,6 @@ async function cancelAppointment(id) {
     loadAppointments();
   } catch (e) {
     showToast(e.message || 'Failed to cancel appointment', 'error');
-  }
-}
-
-async function completeAppointment(id) {
-  try {
-    await apiFetch(`/api/appointments/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'Completed' })
-    });
-    showToast('Appointment marked as completed', 'success');
-    await loadAppointments();
-    if (document.getElementById('view-calendar').style.display !== 'none') renderCalendar();
-  } catch (e) {
-    showToast(e.message || 'Failed to update appointment', 'error');
   }
 }
 
@@ -690,18 +673,46 @@ async function submitConsultation() {
     : parsedDt.toISOString().split('T')[0];
 
   try {
-    await apiFetch('/api/consultations', {
+    // Step 1: create the medical visit
+    const visitData = await apiFetch('/api/medical-visits', {
       method: 'POST',
       body: JSON.stringify({
         patient_id:     appt.patient_id,
         doctor_id:      appt.doctor_id,
         appointment_id: appt.appointment_id,
         visit_date:     visitDate,
-        notes,
-        diagnoses,
-        prescriptions
+        notes
       })
     });
+    const visitId = visitData?.visit_id;
+
+    // Step 2: save diagnoses — backend expects field 'description'
+    for (const description of diagnoses) {
+      await apiFetch('/api/diagnoses', {
+        method: 'POST',
+        body: JSON.stringify({ visit_id: visitId, description })
+      });
+    }
+
+    // Step 3: save prescriptions — backend requires visit_id + drug_name only
+    for (const rx of prescriptions) {
+      await apiFetch('/api/prescriptions', {
+        method: 'POST',
+        body: JSON.stringify({
+          visit_id:  visitId,
+          drug_name: rx.drug_name,
+          dosage:    rx.dosage,
+          duration:  rx.duration
+        })
+      });
+    }
+
+    // Step 4: mark appointment as completed
+    await apiFetch(`/api/appointments/${appt.appointment_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'Completed' })
+    });
+
     closeConsultationModal();
     showToast('Consultation saved — appointment completed', 'success');
     loadAppointments();

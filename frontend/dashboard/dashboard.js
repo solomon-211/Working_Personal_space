@@ -1,19 +1,24 @@
+// Make sure the user is logged in before showing the dashboard
 authGuard();
 checkSessionTimeout();
 
+// Inject the header and sidebar into the page
 document.getElementById('header-slot').outerHTML = renderHeader();
 document.getElementById('sidebar-slot').outerHTML = renderSidebar('dashboard');
 applyRoleVisibility();
 
+// Grab the current user's role and name from the session
 const role = sessionStorage.getItem('role');
 const name = sessionStorage.getItem('name');
 document.getElementById('dash-title').textContent = `Welcome, ${name}`;
 
+// Safely convert a value to a number, returning a fallback if it's not valid
 function safeNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 }
 
+// Sort an array of objects by a date field, newest first
 function sortByDateDesc(items, key) {
   return [...items].sort((left, right) => {
     const leftTime = new Date(left?.[key] ?? 0).getTime();
@@ -22,17 +27,19 @@ function sortByDateDesc(items, key) {
   });
 }
 
+// Go through all invoices and tally up counts and amounts by payment status
 function buildInvoiceSummary(invoices) {
   return invoices.reduce((summary, invoice) => {
     const status = invoice.payment_status ?? '';
     const amountDue = safeNumber(invoice.amount_due ?? invoice.total_amount, 0);
-    if (status === 'Unpaid') { summary.unpaidCount += 1; summary.pendingAmount += amountDue; }
+    if (status === 'Unpaid')       { summary.unpaidCount += 1;  summary.pendingAmount += amountDue; }
     else if (status === 'Partial') { summary.partialCount += 1; summary.pendingAmount += amountDue; }
-    else if (status === 'Paid') { summary.paidCount += 1; summary.paidAmount += amountDue; }
+    else if (status === 'Paid')    { summary.paidCount += 1;    summary.paidAmount    += amountDue; }
     return summary;
   }, { unpaidCount: 0, partialCount: 0, paidCount: 0, pendingAmount: 0, paidAmount: 0 });
 }
 
+// Render the payment overview card with outstanding and collected amounts
 function renderPaymentOverview(summary) {
   const element = document.getElementById('payment-overview');
   if (!element) return;
@@ -65,6 +72,7 @@ function renderPaymentOverview(summary) {
     </div>`;
 }
 
+// Render the scheduled appointments table on the dashboard
 function renderTodayAppointments(appointmentsList) {
   const element = document.getElementById('today-appointments');
   if (appointmentsList.length === 0) {
@@ -87,6 +95,7 @@ function renderTodayAppointments(appointmentsList) {
     </table>`;
 }
 
+// Render the 5 most recently registered patients
 function renderRecentPatients(patients) {
   const element = document.getElementById('recent-patients');
   const recentPatients = sortByDateDesc(patients, 'registered_at').slice(0, 5);
@@ -105,28 +114,38 @@ function renderRecentPatients(patients) {
   `).join('');
 }
 
+// Load all dashboard data in parallel to keep the page fast
 async function loadDashboard() {
   const [appointmentsResult, patientsResult, invoicesResult] = await Promise.allSettled([
-    apiFetch('/api/appointments/today'),
+    apiFetch('/api/appointments'),
     apiFetch('/api/patients'),
     apiFetch('/api/invoices')
   ]);
 
-  const appointmentsList = appointmentsResult.status === 'fulfilled' ? (appointmentsResult.value?.appointments ?? []) : [];
+  const allAppointments = appointmentsResult.status === 'fulfilled' ? (appointmentsResult.value?.appointments ?? []) : [];
+
+  // Only show Scheduled appointments, sorted by date so the soonest ones appear first
+  const appointmentsList = allAppointments
+    .filter(a => a.status === 'Scheduled')
+    .sort((a, b) => new Date(a.appointment_datetime) - new Date(b.appointment_datetime))
+    .slice(0, 10);
+
   const patients = patientsResult.status === 'fulfilled' ? (patientsResult.value?.patients ?? []) : [];
   const invoices = invoicesResult.status === 'fulfilled' ? (invoicesResult.value?.invoices ?? []) : [];
 
   const invoiceSummary = buildInvoiceSummary(invoices);
 
-  document.getElementById('stat-patients').textContent = patients.length;
-  document.getElementById('stat-appointments').textContent = appointmentsList.length;
-  document.getElementById('stat-revenue').textContent = formatCurrency(invoiceSummary.paidAmount);
-  document.getElementById('stat-pending').textContent = formatCurrency(invoiceSummary.pendingAmount);
+  // Update the stat cards at the top of the page
+  document.getElementById('stat-patients').textContent     = patients.length;
+  document.getElementById('stat-appointments').textContent = allAppointments.filter(a => a.status === 'Scheduled').length;
+  document.getElementById('stat-revenue').textContent      = formatCurrency(invoiceSummary.paidAmount);
+  document.getElementById('stat-pending').textContent      = formatCurrency(invoiceSummary.pendingAmount);
 
   renderTodayAppointments(appointmentsList);
   renderRecentPatients(patients);
   renderPaymentOverview(invoiceSummary);
 
+  // Show error messages in each section if a request failed
   if (appointmentsResult.status !== 'fulfilled')
     document.getElementById('today-appointments').innerHTML = '<div class="empty-state"><div class="empty-state-text">Could not load appointments</div></div>';
   if (patientsResult.status !== 'fulfilled')

@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from typing import Any, Dict, List, cast
 from config import get_db_connection
 from cache import cache_get, cache_set, cache_invalidate
 from routes.auth import login_required, role_required
@@ -30,7 +29,7 @@ def get_patient_visits(patient_id):
             WHERE v.patient_id = %s
             ORDER BY v.visit_date DESC
         """, (patient_id,))
-        visits = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        visits = cursor.fetchall()
 
         # For each visit, attach its diagnoses and prescriptions
         # This avoids extra round-trips from the frontend
@@ -38,13 +37,12 @@ def get_patient_visits(patient_id):
             cursor.execute("""
                 SELECT description FROM diagnoses WHERE visit_id = %s
             """, (visit['visit_id'],))
-            diag_rows = cast(List[Dict[str, Any]], cursor.fetchall() or [])
-            visit['diagnoses'] = [row.get('description') for row in diag_rows if row.get('description')]
+            visit['diagnoses'] = [row['description'] for row in cursor.fetchall()]
 
             cursor.execute("""
                 SELECT drug_name, dosage, duration FROM prescriptions WHERE visit_id = %s
             """, (visit['visit_id'],))
-            visit['prescriptions'] = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+            visit['prescriptions'] = cursor.fetchall()
 
         conn.close()
     except Exception as e:
@@ -194,123 +192,3 @@ def add_prescription():
     # Clear the patient's prescription cache
     cache_invalidate(f'prescriptions:')
     return jsonify({'prescription_id': new_id}), 201
-
-
-# route to get a single visit with its full diagnoses and prescriptions (for the invoice modal)
-@medical_visits_bp.route('/visits/<int:visit_id>/summary', methods=['GET'])
-@login_required
-def get_visit_summary(visit_id):
-    """Returns a single visit record with attached diagnoses and prescriptions."""
-    try:
-        conn   = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute("""
-            SELECT v.visit_id, v.visit_date, v.notes,
-                   d.full_name AS doctor_name
-            FROM medical_visits v
-            JOIN doctors d ON v.doctor_id = d.doctor_id
-            WHERE v.visit_id = %s
-        """, (visit_id,))
-        visit = cast(Dict[str, Any], cursor.fetchone() or {})
-
-        if not visit:
-            conn.close()
-            return jsonify({'error': 'Visit not found'}), 404
-
-        cursor.execute(
-            "SELECT description FROM diagnoses WHERE visit_id = %s", (visit_id,)
-        )
-        diag_rows = cast(List[Dict[str, Any]], cursor.fetchall() or [])
-        visit['diagnoses'] = [row.get('description') for row in diag_rows if row.get('description')]
-
-        cursor.execute(
-            "SELECT drug_name, dosage, duration FROM prescriptions WHERE visit_id = %s",
-            (visit_id,)
-        )
-        visit['prescriptions'] = cast(List[Dict[str, Any]], cursor.fetchall() or [])
-
-        conn.close()
-    except Exception as e:
-        return jsonify({'error': 'Could not retrieve visit summary.', 'details': str(e)}), 503
-
-    return jsonify({'visit': visit}), 200
-
-
-# route to save a full consultation in one request: visit + diagnoses + prescriptions
-@medical_visits_bp.route('/consultations', methods=['POST'])
-@role_required('doctor', 'admin')
-def save_consultation():
-    """
-    Creates a visit, bulk-inserts diagnoses and prescriptions, and marks
-    the linked appointment as 'Completed' — all in one transaction.
-    Expected body:
-    {
-        "patient_id": 1,
-        "doctor_id": 2,
-        "appointment_id": 5,           (optional)
-        "visit_date": "2025-06-10",
-        "notes": "...",                (optional)
-        "diagnoses": ["Flu", "..."],   (optional)
-        "prescriptions": [
-            { "drug_name": "Paracetamol", "dosage": "500mg", "duration": "5 days" }
-        ]                              (optional)
-    }
-    """
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    required = ['patient_id', 'doctor_id', 'visit_date']
-    missing  = [f for f in required if not data.get(f)]
-    if missing:
-        return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
-
-    try:
-        conn   = get_db_connection()
-        cursor = conn.cursor()
-
-        # Insert the visit record
-        cursor.execute("""
-            INSERT INTO medical_visits (patient_id, doctor_id, appointment_id, visit_date, notes)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (
-            data['patient_id'],
-            data['doctor_id'],
-            data.get('appointment_id'),
-            data['visit_date'],
-            data.get('notes', '')
-        ))
-        visit_id = cursor.lastrowid
-
-        # Bulk-insert diagnoses
-        for desc in (data.get('diagnoses') or []):
-            if desc:
-                cursor.execute(
-                    "INSERT INTO diagnoses (visit_id, description) VALUES (%s, %s)",
-                    (visit_id, desc)
-                )
-
-        # Bulk-insert prescriptions
-        for rx in (data.get('prescriptions') or []):
-            if rx.get('drug_name'):
-                cursor.execute("""
-                    INSERT INTO prescriptions (visit_id, drug_name, dosage, duration)
-                    VALUES (%s, %s, %s, %s)
-                """, (visit_id, rx['drug_name'], rx.get('dosage'), rx.get('duration')))
-
-        # Mark the linked appointment as Completed
-        if data.get('appointment_id'):
-            cursor.execute(
-                "UPDATE appointments SET status = 'Completed' WHERE appointment_id = %s",
-                (data['appointment_id'],)
-            )
-
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        return jsonify({'error': 'Could not save consultation.', 'details': str(e)}), 503
-
-    cache_invalidate(f'medical-visits:{data["patient_id"]}')
-    cache_invalidate('appointments:')
-    return jsonify({'visit_id': visit_id, 'message': 'Consultation saved'}), 201

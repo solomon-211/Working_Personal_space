@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from typing import Any, Dict, List, cast
 from config import get_db_connection
 from cache import cache_get, cache_set
 from routes.auth import login_required, role_required
@@ -25,8 +24,7 @@ def dashboard_stats():
 
         # Total registered patients
         cursor.execute("SELECT COUNT(*) AS total FROM patients")
-        total_row = cast(Dict[str, Any], cursor.fetchone() or {})
-        total_patients = int(total_row.get('total') or 0)
+        total_patients = cursor.fetchone()['total']
 
         # Today's appointments grouped by status
         cursor.execute("""
@@ -35,7 +33,7 @@ def dashboard_stats():
             WHERE DATE(appointment_datetime) = CURDATE()
             GROUP BY status
         """)
-        appt_rows = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        appt_rows = cursor.fetchall()
         appointments_today = {row['status']: row['count'] for row in appt_rows}
 
         # Revenue collected today
@@ -44,15 +42,13 @@ def dashboard_stats():
             FROM payments
             WHERE payment_date = CURDATE()
         """)
-        revenue_row = cast(Dict[str, Any], cursor.fetchone() or {})
-        revenue_today = float(revenue_row.get('revenue') or 0)
+        revenue_today = float(cursor.fetchone()['revenue'])
 
         # Count of unpaid invoices (useful alert for reception)
         cursor.execute("""
             SELECT COUNT(*) AS count FROM invoices WHERE payment_status = 'Unpaid'
         """)
-        unpaid_row = cast(Dict[str, Any], cursor.fetchone() or {})
-        unpaid_invoices = int(unpaid_row.get('count') or 0)
+        unpaid_invoices = cursor.fetchone()['count']
 
         conn.close()
     except Exception as e:
@@ -96,7 +92,7 @@ def weekly_analytics():
             GROUP BY DATE(a.appointment_datetime)
             ORDER BY day
         """)
-        weekly = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        weekly = cursor.fetchall()
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not load weekly analytics.', 'details': str(e)}), 503
@@ -130,7 +126,7 @@ def analytics_snapshots():
             ORDER BY snapshot_date DESC
             LIMIT %s
         """, (limit,))
-        snapshots = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        snapshots = cursor.fetchall()
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not load snapshots.', 'details': str(e)}), 503
@@ -160,7 +156,7 @@ def financial_report():
             FROM payments
             WHERE payment_date BETWEEN %s AND %s
         """, (date_from, date_to))
-        revenue = cast(Dict[str, Any], cursor.fetchone() or {})
+        revenue = cursor.fetchone()
 
         # Breakdown by payment method
         cursor.execute("""
@@ -169,7 +165,7 @@ def financial_report():
             WHERE payment_date BETWEEN %s AND %s
             GROUP BY payment_method
         """, (date_from, date_to))
-        by_method = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        by_method = cursor.fetchall()
 
         # Outstanding balances
         cursor.execute("""
@@ -178,7 +174,7 @@ def financial_report():
             WHERE invoice_date BETWEEN %s AND %s
             GROUP BY payment_status
         """, (date_from, date_to))
-        by_status = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        by_status = cursor.fetchall()
 
         conn.close()
     except Exception as e:
@@ -186,7 +182,7 @@ def financial_report():
 
     return jsonify({
         'period':          {'from': date_from, 'to': date_to},
-        'total_collected': float(revenue.get('total_collected') or 0),
+        'total_collected': float(revenue['total_collected']),
         'by_method':       by_method,
         'by_status':       by_status
     }), 200
@@ -213,14 +209,13 @@ def clinical_report():
             ORDER BY frequency DESC
             LIMIT 10
         """, (date_from, date_to))
-        top_diagnoses = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        top_diagnoses = cursor.fetchall()
 
         cursor.execute("""
             SELECT COUNT(*) AS total_visits FROM medical_visits
             WHERE visit_date BETWEEN %s AND %s
         """, (date_from, date_to))
-        total_row = cast(Dict[str, Any], cursor.fetchone() or {})
-        total_visits = int(total_row.get('total_visits') or 0)
+        total_visits = cursor.fetchone()['total_visits']
 
         conn.close()
     except Exception as e:
@@ -251,14 +246,14 @@ def operational_report():
             WHERE DATE(appointment_datetime) BETWEEN %s AND %s
             GROUP BY status
         """, (date_from, date_to))
-        by_status = cast(List[Dict[str, Any]], cursor.fetchall() or [])
+        by_status = cursor.fetchall()
 
         cursor.execute("""
             SELECT AVG(avg_wait_time_min) AS avg_wait
             FROM analytics_snapshots
             WHERE snapshot_date BETWEEN %s AND %s
         """, (date_from, date_to))
-        avg_wait = cast(Dict[str, Any], cursor.fetchone() or {})
+        avg_wait = cursor.fetchone()
 
         conn.close()
     except Exception as e:
@@ -267,5 +262,5 @@ def operational_report():
     return jsonify({
         'period':                {'from': date_from, 'to': date_to},
         'appointments_by_status': by_status,
-        'avg_wait_time_minutes':  float(avg_wait.get('avg_wait') or 0)
+        'avg_wait_time_minutes':  float(avg_wait['avg_wait'] or 0)
     }), 200

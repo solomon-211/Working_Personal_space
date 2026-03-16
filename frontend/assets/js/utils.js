@@ -426,7 +426,7 @@ function renderSidebar(activePage) {
       <li data-role="admin,receptionist">
         <a href="/billing/index.html" class="${isActive('billing')}">Billing</a>
       </li>
-      <li data-role="admin">
+      <li data-role="admin,doctor">
         <a href="/reports/index.html" class="${isActive('reports')}">Reports</a>
       </li>
     </ul>

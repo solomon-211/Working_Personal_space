@@ -3,127 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invoices - CCMS</title>
+  <title>Billing — CCMS</title>
   <link rel="stylesheet" href="/assets/css/style.css" />
-  <link rel="stylesheet" href="/billing/billing.css" />
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <div class="logo-icon">HB</div>
-      HealthHub Bridge
+
+<!-- Full-page spinner shown while invoices are loading -->
+<div id="global-spinner" class="global-spinner-overlay">
+  <span class="spinner spinner-dark spinner-lg"></span>
+</div>
+
+<!-- Create invoice modal — patient dropdown and service rows are populated by billing.js -->
+<div class="modal-overlay" id="create-invoice-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Invoice</h3>
+      <button class="modal-close" onclick="hideModal('create-invoice-modal')">×</button>
     </div>
-    <div class="header-search">
-      <input type="text" placeholder="Global search..." />
+    <div class="form-group">
+      <label class="form-label">Patient <span class="required">*</span></label>
+      <select id="invoice-patient-select" class="form-control" title="Select patient">
+        <option value="">Select Patient</option>
+      </select>
     </div>
-    <div class="header-actions">
-      <div class="user-info">
-        <span class="user-name" id="user-name">User</span>
-        <span class="role-badge" id="user-role">Guest</span>
+    <!-- Service line items — addServiceRow() appends rows dynamically -->
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label class="form-label" style="margin:0;">Services</label>
+        <button type="button" class="btn btn-outline btn-sm" onclick="addServiceRow()">+ Add Service</button>
       </div>
-      <button class="logout-btn" onclick="logout()">Logout</button>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:var(--bg);">
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">Service</th>
+            <th style="padding:8px;width:60px;text-align:right;border-bottom:1px solid var(--border);">Qty</th>
+            <th style="padding:8px;width:110px;text-align:right;border-bottom:1px solid var(--border);">Price (SSP)</th>
+            <th style="padding:8px;width:30px;border-bottom:1px solid var(--border);"></th>
+          </tr>
+        </thead>
+        <tbody id="services-tbody-new"></tbody>
+      </table>
     </div>
-  </header>
-
-  <aside>
-    <button class="sidebar-toggle" onclick="toggleSidebar()">Menu</button>
-    <nav>
-      <ul>
-        <li><a href="/dashboard/index.html"><span data-icon class="icon-dashboard"></span>Dashboard</a></li>
-        <li data-role="receptionist,doctor,admin"><a href="/patients/list.html"><span data-icon class="icon-patients"></span>Patients</a></li>
-        <li data-role="receptionist,admin"><a href="/patients/register.html"><span data-icon class="icon-add"></span>Register Patient</a></li>
-        <li data-role="receptionist,doctor,admin"><a href="/appointments/index.html"><span data-icon class="icon-appointments"></span>Appointments</a></li>
-        <li data-role="receptionist,admin"><a href="/billing/index.html" class="active"><span data-icon class="icon-billing"></span>Billing</a></li>
-        <li data-role="admin"><a href="/reports/index.html"><span data-icon class="icon-reports"></span>Reports</a></li>
-      </ul>
-    </nav>
-  </aside>
-
-  <main>
-    <div class="page-header">
-      <div class="page-heading">
-        <h1 class="page-title">Invoices</h1>
-        <p class="page-subtitle">Track billing, balances, and payment status</p>
-      </div>
-      <div class="page-actions">
-        <button class="btn btn-primary" onclick="createInvoice()">+ Create Invoice</button>
-      </div>
+    <!-- Running total updates as rows are added or quantities change -->
+    <div style="text-align:right;font-weight:700;font-size:15px;margin-bottom:16px;">
+      Total: <span id="invoice-total-preview">0 SSP</span>
     </div>
-
-    <div class="filters">
-      <div class="filter-group">
-        <label>Patient Search</label>
-        <input type="text" id="filter-patient" placeholder="Search by name or clinic number..." />
-      </div>
-      <div class="filter-group">
-        <label>Status</label>
-        <select id="filter-status" title="Filter invoices by status">
-          <option value="">All Statuses</option>
-          <option value="Unpaid">Unpaid</option>
-          <option value="Partial">Partial</option>
-          <option value="Paid">Paid</option>
-        </select>
-      </div>
-    </div>
-
-    <table class="invoices-table">
-      <thead>
-        <tr>
-          <th>Invoice #</th>
-          <th>Patient</th>
-          <th>Date</th>
-          <th>Total (SSP)</th>
-          <th>Amount Due (SSP)</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="invoices-list"></tbody>
-    </table>
-  </main>
-
-  <footer>
-    CCMS © 2025 - HealthHub Bridge
-  </footer>
-
-  <div class="modal-overlay" id="create-invoice-modal">
-    <div class="create-invoice-dialog">
-      <div class="dialog-header">
-        <h3 class="dialog-title">Create Invoice</h3>
-        <button onclick="hideModal('create-invoice-modal')" class="dialog-close" title="Close create invoice dialog">X</button>
-      </div>
-      <div class="dialog-field">
-        <label class="dialog-label">Patient</label>
-        <select id="invoice-patient-select" class="dialog-select" title="Select patient for invoice">
-          <option value="">Select Patient</option>
-        </select>
-      </div>
-      <div class="dialog-field services">
-        <label class="dialog-label">Services</label>
-        <table class="dialog-services-table">
-          <thead>
-            <tr>
-              <th>Service</th>
-              <th class="qty">Qty</th>
-              <th class="price">Price (SSP)</th>
-              <th class="remove"></th>
-            </tr>
-          </thead>
-          <tbody id="services-tbody-new"></tbody>
-        </table>
-        <button type="button" class="btn btn-secondary btn-small dialog-add-service" onclick="addServiceRow()">+ Add Service</button>
-      </div>
-      <div class="dialog-total">
-        Total: <span id="invoice-total-preview">0 SSP</span>
-      </div>
-      <div class="dialog-actions">
-        <button class="btn btn-secondary" onclick="hideModal('create-invoice-modal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitCreateInvoice()">Create Invoice</button>
-      </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('create-invoice-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreateInvoice()">Create Invoice</button>
     </div>
   </div>
+</div>
 
-  <script src="/assets/js/utils.js"></script>
-  <script src="/billing/billing.js"></script>
+<!-- Record payment modal — tied to a specific invoice via the hidden pay-invoice-id field -->
+<div class="modal-overlay" id="payment-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Record Payment</h3>
+      <button class="modal-close" onclick="hideModal('payment-modal')">×</button>
+    </div>
+    <!-- Hidden field carries the invoice ID so submitPayment() knows which invoice to update -->
+    <input type="hidden" id="pay-invoice-id">
+    <div class="form-group">
+      <label class="form-label">Amount (SSP) <span class="required">*</span></label>
+      <input type="number" id="pay-amount" class="form-control" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Payment Method</label>
+      <select id="pay-method" class="form-control" title="Payment method">
+        <option value="Cash">Cash</option>
+        <option value="Card">Card</option>
+        <option value="Mobile">Mobile</option>
+        <option value="Insurance">Insurance</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reference No.</label>
+      <input type="text" id="pay-ref" class="form-control" placeholder="Optional">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('payment-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPayment()">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div id="header-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <main class="main">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Billing</h1>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:2px;">Track invoices, balances, and payment status</p>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateInvoice()">+ Create Invoice</button>
+    </div>
+
+    <!-- Filter bar — billing.js listens for input changes and re-renders the table -->
+    <div class="filter-bar" style="margin-bottom:16px;">
+      <input type="text" id="filter-patient" class="form-control" placeholder="Search by patient name or clinic number..." style="max-width:300px;">
+      <select id="filter-status" class="form-control" title="Filter by status" style="width:160px;">
+        <option value="">All Statuses</option>
+        <option value="Unpaid">Unpaid</option>
+        <option value="Partial">Partial</option>
+        <option value="Paid">Paid</option>
+      </select>
+    </div>
+
+    <!-- Invoice table — rows are injected by renderInvoices() in billing.js -->
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice #</th>
+            <th>Patient</th>
+            <th>Date</th>
+            <th>Total</th>
+            <th>Amount Due</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="invoices-list">
+          <tr><td colspan="7"><div class="empty-state"><div class="empty-state-text">Loading invoices...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script src="/assets/js/utils.js"></script>
+<script src="/billing/billing.js"></script>
 </body>
 </html>

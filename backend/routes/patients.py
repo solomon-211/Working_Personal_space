@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from config import get_db_connection
 from cache import cache_get, cache_set, cache_invalidate
 from routes.auth import login_required
-import mysql.connector
 
 patients_bp = Blueprint('patients', __name__)
 
@@ -90,7 +89,7 @@ def register_patient():
         conn.commit()
         new_id = cursor.lastrowid
         conn.close()
-    except mysql.connector.IntegrityError:
+    except mysql_error(1062):
         # Duplicate clinic_number — give a specific, helpful message
         return jsonify({'error': f"Clinic number '{data['clinic_number']}' is already registered"}), 409
     except Exception as e:
@@ -170,31 +169,13 @@ def update_patient(patient_id):
     return jsonify({'message': 'Patient updated successfully'}), 200
 
 
-# route alias: /patients/<id>/prescriptions — matches what the profile page calls
-@patients_bp.route('/patients/<int:patient_id>/prescriptions', methods=['GET'])
-@login_required
-def get_patient_prescriptions(patient_id):
-    """Returns all prescriptions for a patient (alias for /prescriptions/<patient_id>)."""
-    cache_key = f'prescriptions:{patient_id}'
-    cached = cache_get(cache_key)
-    if cached:
-        return jsonify({'prescriptions': cached, 'source': 'cache'}), 200
-
-    try:
-        conn   = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT pr.prescription_id, pr.drug_name, pr.dosage, pr.duration,
-                   pr.end_time, v.visit_date
-            FROM prescriptions pr
-            JOIN medical_visits v ON pr.visit_id = v.visit_id
-            WHERE v.patient_id = %s
-            ORDER BY v.visit_date DESC
-        """, (patient_id,))
-        prescriptions = cursor.fetchall()
-        conn.close()
-    except Exception as e:
-        return jsonify({'error': 'Could not retrieve prescriptions.', 'details': str(e)}), 503
-
-    cache_set(cache_key, prescriptions)
-    return jsonify({'prescriptions': prescriptions, 'source': 'db'}), 200
+# Local helper to catch duplicate-entry errors by code
+def mysql_error(code):
+    """Returns the mysql.connector IntegrityError class for use in except clauses."""
+    import mysql.connector
+    class _Err(Exception):
+        pass
+    # Return the real error class filtered by code
+    class CodedError(mysql.connector.IntegrityError):
+        pass
+    return CodedError

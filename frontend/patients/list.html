@@ -9,23 +9,25 @@
 </head>
 <body>
 
-<!-- Full-page loading spinner shown during API calls -->
+<!-- Full-page spinner shown during API calls -->
 <div id="global-spinner" class="global-spinner-overlay">
   <span class="spinner spinner-dark spinner-lg"></span>
 </div>
 
 <div class="layout">
-  <!-- Header and sidebar injected by JavaScript -->
+
+  <!-- Header and sidebar are injected by utils.js -->
   <div id="header-slot"></div>
   <div id="sidebar-slot"></div>
 
   <main class="main">
+
     <div class="page-header">
       <div class="page-heading">
         <h1 class="page-title">Patients</h1>
         <p class="page-subtitle">View records, search quickly, and manage patient registration</p>
       </div>
-      <!-- Only admins and receptionists see the Register button (hidden via JS below) -->
+      <!-- Register button is hidden for doctors via applyRoleVisibility() -->
       <div class="page-actions">
         <button class="btn btn-primary" id="register-btn" onclick="location.href = '/patients/register.html'">
           Register New Patient
@@ -33,10 +35,10 @@
       </div>
     </div>
 
-    <!-- Search bar with a clear button -->
+    <!-- Search bar — list.js debounces input and calls the API -->
     <div class="page-controls">
       <div class="search-box">
-        <span class="search-box-icon">&#128269;</span>
+        <span class="search-box-icon"></span>
         <input
           type="text"
           id="search-input"
@@ -46,18 +48,18 @@
       </div>
     </div>
 
-    <!-- Table card with header info and pagination footer -->
+    <!-- Patient table — rows are built and injected by renderTable() in list.js -->
     <div class="table-container">
       <div class="table-header">
         <span class="table-info" id="table-info"></span>
       </div>
 
-      <!-- Table is rendered here by renderTable() -->
+      <!-- Placeholder text while the first load is in progress -->
       <div id="patients-list">
         <div class="patients-loading">Loading patients...</div>
       </div>
 
-      <!-- Pagination controls — hidden when there is only one page -->
+      <!-- Pagination bar — hidden when everything fits on one page -->
       <div class="pagination-footer is-hidden" id="pagination-footer">
         <span class="pagination-info" id="pagination-info"></span>
         <div class="pagination">
@@ -66,6 +68,7 @@
         </div>
       </div>
     </div>
+
   </main>
 </div>
 

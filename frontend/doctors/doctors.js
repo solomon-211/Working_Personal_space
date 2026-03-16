@@ -1,16 +1,17 @@
 // Page bootstrap: auth + shared shell components.
 authGuard();
 
-document.getElementById('app-header').outerHTML = renderHeader();
-document.getElementById('app-sidebar').outerHTML = renderSidebar('doctors');
+document.getElementById('header-slot').outerHTML = renderHeader();
+document.getElementById('sidebar-slot').outerHTML = renderSidebar('doctors');
 applyRoleVisibility();
 checkSessionTimeout();
 
-// Page state and frequently used element references.
+// Page state — doctors and schedules are loaded once and reused across renders
 let doctors = [];
 let schedules = [];
 let selectedDoctorId = null;
 
+// Grab all the DOM elements we'll be touching throughout the page
 const doctorTableBody = document.getElementById('doctor-table-body');
 const doctorCount = document.getElementById('doctor-count');
 const searchInput = document.getElementById('search-input');
@@ -22,14 +23,17 @@ const summarySpecializations = document.getElementById('summary-specializations'
 const summaryScheduled = document.getElementById('summary-scheduled');
 const refreshButton = document.getElementById('refresh-btn');
 
+// Returns a dash if the value is empty or whitespace — keeps the table clean
 function toDisplay(value) {
 	return value && String(value).trim() ? value : '—';
 }
 
+// Lowercases a value for case-insensitive comparisons
 function normalize(text) {
 	return String(text || '').toLowerCase();
 }
 
+// Applies the current search keyword and specialization filter to the full doctor list
 function getFilteredDoctors() {
 	const keyword = normalize(searchInput.value);
 	const specialization = specializationFilter.value;
@@ -56,6 +60,7 @@ function renderDoctors() {
 
 	doctorTableBody.innerHTML = filteredDoctors
 		.map((doctor) => {
+			// Highlight the row if this doctor is currently selected
 			const isActive = selectedDoctorId === doctor.doctor_id ? 'active' : '';
 			return `
 				<tr class="doctor-row ${isActive}" data-doctor-id="${doctor.doctor_id}">
@@ -68,6 +73,7 @@ function renderDoctors() {
 		})
 		.join('');
 
+	// Clicking a row selects that doctor and shows their schedule on the right
 	doctorTableBody.querySelectorAll('tr[data-doctor-id]').forEach((row) => {
 		row.addEventListener('click', () => {
 			selectedDoctorId = Number(row.getAttribute('data-doctor-id'));
@@ -83,6 +89,7 @@ function renderSummary() {
 	summaryScheduled.textContent = String(new Set(schedules.map((s) => Number(s.doctor_id))).size);
 }
 
+// Populate the specialization dropdown from whatever values exist in the loaded data
 function renderSpecializationFilter() {
 	const values = Array.from(new Set(doctors.map((d) => d.specialization).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 	specializationFilter.innerHTML =
@@ -105,6 +112,7 @@ function renderSchedule() {
 		return;
 	}
 
+	// Sort by day name alphabetically and render a card for each working day
 	scheduleContainer.innerHTML = doctorSchedules
 		.sort((a, b) => String(a.day_of_week).localeCompare(String(b.day_of_week)))
 		.map(
@@ -120,6 +128,7 @@ function renderSchedule() {
 
 async function loadData() {
 	try {
+		// Fetch doctors and their schedules at the same time to save a round trip
 		const [doctorResponse, scheduleResponse] = await Promise.all([apiFetch('/api/doctors'), apiFetch('/api/doctor-schedules')]);
 
 		doctors = doctorResponse?.doctors || [];
@@ -136,6 +145,7 @@ async function loadData() {
 	}
 }
 
+// Wire up search, filter, and refresh — then kick off the initial load
 searchInput.addEventListener('input', debounce(renderDoctors, 200));
 specializationFilter.addEventListener('change', renderDoctors);
 refreshButton.addEventListener('click', loadData);

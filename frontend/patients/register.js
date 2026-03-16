@@ -1,16 +1,20 @@
+// Only admin and receptionist can register new patients
 authGuard();
 checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
 
+// Inject the shared header and sidebar
 document.getElementById('header-slot').outerHTML = renderHeader();
 document.getElementById('sidebar-slot').outerHTML = renderSidebar('register');
 applyRoleVisibility();
 checkSessionTimeout();
 
+// Track which step of the registration wizard we're on
 let currentStep = 1;
 let patientData = {};
 let registeredClinicNumber = null;
 let registeredPatientId = null;
 
+// Switch to a specific step and update the step indicators accordingly
 function setStep(step) {
   currentStep = step;
   document.getElementById('step-1').classList.toggle('active', step === 1);
@@ -21,6 +25,7 @@ function setStep(step) {
     if (i < step) ind.classList.add('completed');
     else if (i === step) ind.classList.add('active');
   }
+  // Show the right buttons for each step
   document.getElementById('back-btn').style.display   = step === 1 ? 'none' : '';
   document.getElementById('next-btn').style.display   = step === 2 ? 'none' : '';
   document.getElementById('submit-btn').style.display = step === 2 ? '' : 'none';
@@ -29,12 +34,14 @@ function setStep(step) {
 
 function previousStep() { if (currentStep > 1) setStep(currentStep - 1); }
 
+// Validate step 1 before moving to step 2
 function nextStep() {
   if (!validateStep1()) return;
   saveStep1();
   setStep(2);
 }
 
+// Save the step 1 form values into memory so they survive the step transition
 function saveStep1() {
   patientData = {
     firstName:     document.getElementById('firstName').value,
@@ -47,6 +54,7 @@ function saveStep1() {
   };
 }
 
+// Check that all required fields in step 1 are filled in correctly
 function validateStep1() {
   const fields = {
     firstName:     document.getElementById('firstName').value.trim(),
@@ -77,12 +85,14 @@ function validateStep1() {
   return Object.keys(errors).length === 0;
 }
 
+// Generate a random clinic number in the format CLN-XXXX for the preview
 function generateClinicNumber() {
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   registeredClinicNumber = `CLN-${random}`;
   document.getElementById('clinic-number-preview').textContent = registeredClinicNumber;
 }
 
+// Submit the full registration form to the backend
 async function submitForm() {
   if (!validateStep1()) { setStep(1); return; }
   if (!document.getElementById('consent').checked) {
@@ -92,6 +102,7 @@ async function submitForm() {
   document.getElementById('consent-error').textContent = '';
   saveStep1();
 
+  // Build the payload using the backend's expected field names
   const payload = {
     first_name:         patientData.firstName,
     last_name:          patientData.lastName,
@@ -122,15 +133,18 @@ async function submitForm() {
   }
 }
 
+// Go to the newly registered patient's profile page
 function viewPatientProfile() {
   if (registeredPatientId) location.href = `/patients/profile.html?id=${registeredPatientId}`;
 }
 
+// Pre-fill the appointment booking page with this patient and redirect there
 function schedulePatientAppointment() {
   if (registeredPatientId) sessionStorage.setItem('prefillAppointmentPatientId', String(registeredPatientId));
   location.href = '/appointments/index.html';
 }
 
+// Reset the form so the user can register another patient right away
 function registerAnother() {
   document.getElementById('success-modal').classList.remove('show');
   ['firstName','lastName','date_of_birth','gender','phone','email','address',
@@ -140,4 +154,5 @@ function registerAnother() {
   setStep(1);
 }
 
+// Start on step 1 when the page loads
 setStep(1);
