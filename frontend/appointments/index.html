@@ -129,11 +129,11 @@
 <!-- Post-consultation summary modal — shown after a consultation is saved -->
 <div class="modal-overlay" id="summary-modal">
   <div class="modal modal-520">
-    <div class="modal-header" style="background:#F0FDF4;border-bottom:1px solid #BBF7D0;">
-      <h3 class="modal-title" style="color:#15803D;">Consultation Complete</h3>
+    <div class="modal-header summary-modal-header">
+      <h3 class="modal-title summary-modal-title">Consultation Complete</h3>
       <button class="modal-close" onclick="closeSummaryModal()">X</button>
     </div>
-    <div id="summary-body" style="padding:20px 24px;">
+    <div id="summary-body" class="summary-modal-body">
       <!-- filled dynamically -->
     </div>
     <div class="modal-footer">
@@ -264,9 +264,7 @@
         <span class="apt-search-icon"></span>
         <input type="text" id="apt-search" placeholder="Search patient, doctor, or reason..."
           class="apt-search-input"
-          oninput="filterAppointments(this.value)"
-          onfocus="this.style.borderColor='var(--primary)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)'"
-          onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'" />
+          oninput="filterAppointments(this.value)" />
         <button id="apt-search-clear" onclick="clearAptSearch()"
           class="apt-search-clear">Clear</button>
       </div>

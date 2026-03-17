@@ -24,9 +24,9 @@
     <div class="page-header">
       <div>
         <div class="invoice-title" id="invoice-number">Invoice #</div>
-        <div style="font-size:13px;color:var(--text-muted);margin-top:2px;" id="invoice-patient">—</div>
+        <div class="invoice-patient-name" id="invoice-patient">—</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div class="invoice-header-actions">
         <button class="btn btn-outline btn-sm" onclick="history.back()">← Back</button>
         <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
       </div>
@@ -49,7 +49,7 @@
       <div class="meta-item">
         <div class="meta-label">Amount Due</div>
         <!-- Amount due is shown in red to draw attention to outstanding balances -->
-        <div class="meta-value" id="invoice-due" style="color:var(--danger);">—</div>
+        <div class="meta-value invoice-due" id="invoice-due">—</div>
       </div>
     </div>
 
@@ -99,7 +99,7 @@
       <div class="invoice-section">
         <div class="section-header-row">
           <div class="section-title section-title-inline">Payment History</div>
-          <button class="btn btn-primary btn-sm" id="add-payment-btn" onclick="openPaymentModal()" style="display:none;">+ Add Payment</button>
+          <button class="btn btn-primary btn-sm invoice-add-payment-btn" id="add-payment-btn" onclick="openPaymentModal()">+ Add Payment</button>
         </div>
         <!-- invoice.js replaces this with a placeholder message since the endpoint doesn't return payments -->
         <div id="payments-list">

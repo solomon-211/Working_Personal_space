@@ -212,3 +212,17 @@
   .wizard-actions { padding: 14px 20px; }
   .wizard-steps { padding: 16px 20px; }
 }
+
+/* ── register.html extracted inline styles ── */
+
+.required {
+  color: var(--danger);
+}
+
+.clinic-number-input {
+  margin-top: 6px;
+}
+
+.wizard-btn-hidden {
+  display: none;
+}

@@ -19,8 +19,8 @@ let pendingPrefillPatientId = sessionStorage.getItem('prefillInvoicePatientId');
 // Fetch all invoices from the backend
 async function loadInvoices() {
   try {
-    const res = await apiFetch('/api/invoices');
-    allInvoices = res?.invoices || [];
+    const response = await apiFetch('/api/invoices');
+    allInvoices = response?.invoices || [];
     applyFilters();
   } catch (e) {
     document.getElementById('invoices-list').innerHTML =
@@ -32,11 +32,11 @@ async function loadInvoices() {
 function applyFilters() {
   const search = document.getElementById('filter-patient').value.trim().toLowerCase();
   const status = document.getElementById('filter-status').value;
-  const filtered = allInvoices.filter(inv => {
-    const name   = `${inv.first_name} ${inv.last_name}`.toLowerCase();
-    const clinic = (inv.clinic_number || '').toLowerCase();
+  const filtered = allInvoices.filter(invoice => {
+    const name   = `${invoice.first_name} ${invoice.last_name}`.toLowerCase();
+    const clinic = (invoice.clinic_number || '').toLowerCase();
     if (search && !name.includes(search) && !clinic.includes(search)) return false;
-    if (status && inv.payment_status !== status) return false;
+    if (status && invoice.payment_status !== status) return false;
     return true;
   });
   renderInvoices(filtered);
@@ -49,18 +49,18 @@ function renderInvoices(invoices) {
     tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-text">No invoices found</div></div></td></tr>';
     return;
   }
-  tbody.innerHTML = invoices.map(inv => `
+  tbody.innerHTML = invoices.map(invoice => `
     <tr>
-      <td><strong>INV-${String(inv.invoice_id).padStart(4,'0')}</strong></td>
-      <td>${inv.first_name} ${inv.last_name}<br><small style="color:var(--text-muted);">${inv.clinic_number}</small></td>
-      <td>${formatDate(inv.invoice_date)}</td>
-      <td>${formatCurrency(inv.total_amount)}</td>
-      <td>${formatCurrency(inv.amount_due)}</td>
-      <td>${renderBadge(inv.payment_status)}</td>
+      <td><strong>INV-${String(invoice.invoice_id).padStart(4,'0')}</strong></td>
+      <td>${invoice.first_name} ${invoice.last_name}<br><small style="color:var(--text-muted);">${invoice.clinic_number}</small></td>
+      <td>${formatDate(invoice.invoice_date)}</td>
+      <td>${formatCurrency(invoice.total_amount)}</td>
+      <td>${formatCurrency(invoice.amount_due)}</td>
+      <td>${renderBadge(invoice.payment_status)}</td>
       <td>
         <div style="display:flex;gap:6px;">
-          <button class="btn btn-outline btn-sm" onclick="location.href='/billing/invoice.html?id=${inv.invoice_id}'">View</button>
-          ${inv.payment_status !== 'Paid' ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${inv.invoice_id})">Pay</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="location.href='/billing/invoice.html?id=${invoice.invoice_id}'">View</button>
+          ${invoice.payment_status !== 'Paid' ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${invoice.invoice_id})">Pay</button>` : ''}
         </div>
       </td>
     </tr>`).join('');
@@ -75,20 +75,20 @@ async function openCreateInvoice() {
 
   try {
     // Load patients and services in parallel, reusing cached data if available
-    const [pRes, sRes] = await Promise.all([
+    const [patientsResponse, servicesResponse] = await Promise.all([
       allPatients.length ? Promise.resolve({ patients: allPatients }) : apiFetch('/api/patients'),
       allServices.length ? Promise.resolve({ services: allServices }) : apiFetch('/api/services')
     ]);
-    allPatients = pRes?.patients || [];
-    allServices = sRes?.services || [];
+    allPatients = patientsResponse?.patients || [];
+    allServices = servicesResponse?.services || [];
 
-    const sel = document.getElementById('invoice-patient-select');
-    sel.innerHTML = '<option value="">Select Patient</option>' +
-      allPatients.map(p => `<option value="${p.patient_id}">${p.first_name} ${p.last_name} (${p.clinic_number})</option>`).join('');
+    const patientSelect = document.getElementById('invoice-patient-select');
+    patientSelect.innerHTML = '<option value="">Select Patient</option>' +
+      allPatients.map(patient => `<option value="${patient.patient_id}">${patient.first_name} ${patient.last_name} (${patient.clinic_number})</option>`).join('');
 
     // If we were redirected here from another page with a patient pre-selected, apply it
     if (pendingPrefillPatientId) {
-      sel.value = String(pendingPrefillPatientId);
+      patientSelect.value = String(pendingPrefillPatientId);
       pendingPrefillPatientId = null;
       sessionStorage.removeItem('prefillInvoicePatientId');
     }
@@ -101,18 +101,18 @@ async function openCreateInvoice() {
 // Add a new service line item row to the create invoice form
 function addServiceRow() {
   const tbody = document.getElementById('services-tbody-new');
-  const tr = document.createElement('tr');
-  const opts = allServices.map(s =>
-    `<option value="${s.service_id}" data-price="${s.unit_price}">${s.service_name} — ${formatCurrency(s.unit_price)}</option>`
+  const row = document.createElement('tr');
+  const serviceOptions = allServices.map(service =>
+    `<option value="${service.service_id}" data-price="${service.unit_price}">${service.service_name} — ${formatCurrency(service.unit_price)}</option>`
   ).join('');
-  tr.innerHTML = `
+  row.innerHTML = `
     <td style="padding:6px 4px;">
-      <select class="form-control svc-select" style="font-size:12px;" onchange="onServicePick(this)">
-        <option value="">— Select service —</option>${opts}
+      <select class="form-control service-select" style="font-size:12px;" onchange="onServicePick(this)">
+        <option value="">— Select service —</option>${serviceOptions}
       </select>
     </td>
     <td style="padding:6px 4px;text-align:right;">
-      <input type="number" class="form-control qty-input" value="1" min="1" style="width:54px;font-size:12px;text-align:right;" oninput="updateInvoiceTotal()">
+      <input type="number" class="form-control quantity-input" value="1" min="1" style="width:54px;font-size:12px;text-align:right;" oninput="updateInvoiceTotal()">
     </td>
     <td style="padding:6px 4px;text-align:right;">
       <input type="number" class="form-control price-input" value="0" min="0" step="0.01" style="width:90px;font-size:12px;text-align:right;" readonly>
@@ -121,24 +121,24 @@ function addServiceRow() {
       <button type="button" onclick="this.closest('tr').remove();updateInvoiceTotal();"
         style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer;">×</button>
     </td>`;
-  tbody.appendChild(tr);
+  tbody.appendChild(row);
 }
 
 // Auto-fill the unit price when a service is selected from the dropdown
 function onServicePick(select) {
-  const opt = select.options[select.selectedIndex];
+  const selectedOption = select.options[select.selectedIndex];
   const row = select.closest('tr');
-  row.querySelector('.price-input').value = opt.value ? (parseFloat(opt.dataset.price) || 0).toFixed(2) : '0';
+  row.querySelector('.price-input').value = selectedOption.value ? (parseFloat(selectedOption.dataset.price) || 0).toFixed(2) : '0';
   updateInvoiceTotal();
 }
 
 // Recalculate the running total as the user adds or changes line items
 function updateInvoiceTotal() {
   let total = 0;
-  document.querySelectorAll('#services-tbody-new tr').forEach(tr => {
-    const qty   = parseFloat(tr.querySelector('.qty-input')?.value)   || 0;
-    const price = parseFloat(tr.querySelector('.price-input')?.value) || 0;
-    total += qty * price;
+  document.querySelectorAll('#services-tbody-new tr').forEach(row => {
+    const quantity = parseFloat(row.querySelector('.quantity-input')?.value) || 0;
+    const price    = parseFloat(row.querySelector('.price-input')?.value)    || 0;
+    total += quantity * price;
   });
   document.getElementById('invoice-total-preview').textContent = formatCurrency(total);
 }
@@ -149,10 +149,10 @@ async function submitCreateInvoice() {
   if (!patientId) { showToast('Please select a patient', 'error'); return; }
 
   const items = [];
-  document.querySelectorAll('#services-tbody-new tr').forEach(tr => {
-    const serviceId = tr.querySelector('.svc-select')?.value;
-    const qty       = parseInt(tr.querySelector('.qty-input')?.value) || 1;
-    if (serviceId) items.push({ service_id: parseInt(serviceId), quantity: qty });
+  document.querySelectorAll('#services-tbody-new tr').forEach(row => {
+    const serviceId = row.querySelector('.service-select')?.value;
+    const quantity  = parseInt(row.querySelector('.quantity-input')?.value) || 1;
+    if (serviceId) items.push({ service_id: parseInt(serviceId), quantity });
   });
 
   if (!items.length) { showToast('Please select at least one service', 'error'); return; }
@@ -183,8 +183,8 @@ function openPaymentModal(invoiceId) {
 async function submitPayment() {
   const invoiceId = document.getElementById('pay-invoice-id').value;
   const amount    = parseFloat(document.getElementById('pay-amount').value);
-  const method    = document.getElementById('pay-method').value;
-  const ref       = document.getElementById('pay-ref').value.trim();
+  const method          = document.getElementById('pay-method').value;
+  const referenceNumber = document.getElementById('pay-ref').value.trim();
 
   if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
 
@@ -196,7 +196,7 @@ async function submitPayment() {
         amount_paid:    amount,
         payment_method: method,
         payment_date:   new Date().toISOString().split('T')[0],
-        reference_no:   ref,
+        reference_no:   referenceNumber,
         received_by:    sessionStorage.getItem('name') || ''
       })
     });

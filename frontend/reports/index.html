@@ -21,7 +21,7 @@
 
   <main class="main">
 
-    <div class="page-header" style="grid-column:1/-1;">
+    <div class="page-header page-header-full">
       <div class="page-heading">
         <h1 class="page-title">Reports</h1>
         <p class="page-subtitle">Generate financial, clinical, and operational insights</p>
@@ -45,11 +45,11 @@
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From</label>
-          <input type="date" id="fin-from" class="form-control" />
+          <input type="date" id="fin-from" class="form-control" title="Financial report start date" />
         </div>
         <div class="form-group">
           <label>Date To</label>
-          <input type="date" id="fin-to" class="form-control" />
+          <input type="date" id="fin-to" class="form-control" title="Financial report end date" />
         </div>
         <button class="btn btn-primary generate-btn" onclick="generateReport('financial')">Generate Report</button>
       </div>
@@ -59,11 +59,11 @@
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From</label>
-          <input type="date" id="cli-from" class="form-control" />
+          <input type="date" id="cli-from" class="form-control" title="Clinical report start date" />
         </div>
         <div class="form-group">
           <label>Date To</label>
-          <input type="date" id="cli-to" class="form-control" />
+          <input type="date" id="cli-to" class="form-control" title="Clinical report end date" />
         </div>
         <button class="btn btn-primary generate-btn" onclick="generateReport('clinical')">Generate Report</button>
       </div>
@@ -73,11 +73,11 @@
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From</label>
-          <input type="date" id="op-from" class="form-control" />
+          <input type="date" id="op-from" class="form-control" title="Operational report start date" />
         </div>
         <div class="form-group">
           <label>Date To</label>
-          <input type="date" id="op-to" class="form-control" />
+          <input type="date" id="op-to" class="form-control" title="Operational report end date" />
         </div>
         <button class="btn btn-primary generate-btn" onclick="generateReport('operational')">Generate Report</button>
       </div>
@@ -87,11 +87,11 @@
         <div class="divider"></div>
         <div class="form-group">
           <label>Date From (optional)</label>
-          <input type="date" id="pat-from" class="form-control" />
+          <input type="date" id="pat-from" class="form-control" title="Patient report start date (optional)" />
         </div>
         <div class="form-group">
           <label>Date To (optional)</label>
-          <input type="date" id="pat-to" class="form-control" />
+          <input type="date" id="pat-to" class="form-control" title="Patient report end date (optional)" />
         </div>
         <button class="btn btn-primary generate-btn" onclick="generateReport('patient')">Generate Report</button>
       </div>

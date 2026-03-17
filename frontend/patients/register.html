@@ -46,19 +46,19 @@
           <h2>Basic Information</h2>
           <div class="form-grid-2">
             <div class="form-group">
-              <label for="firstName">First Name <span style="color:var(--danger)">*</span></label>
+              <label for="firstName">First Name <span class="required">*</span></label>
               <input type="text" id="firstName" placeholder="e.g. Amina" />
               <div class="field-error" id="firstName-error"></div>
             </div>
             <div class="form-group">
-              <label for="lastName">Last Name <span style="color:var(--danger)">*</span></label>
+              <label for="lastName">Last Name <span class="required">*</span></label>
               <input type="text" id="lastName" placeholder="e.g. Lado" />
               <div class="field-error" id="lastName-error"></div>
             </div>
           </div>
           <div class="form-grid-2">
             <div class="form-group">
-              <label for="date_of_birth">Date of Birth <span style="color:var(--danger)">*</span></label>
+              <label for="date_of_birth">Date of Birth <span class="required">*</span></label>
               <input type="date" id="date_of_birth" />
               <div class="field-error" id="date_of_birth-error"></div>
             </div>
@@ -74,7 +74,7 @@
           </div>
           <div class="form-grid-2">
             <div class="form-group">
-              <label for="phone">Phone <span style="color:var(--danger)">*</span></label>
+              <label for="phone">Phone <span class="required">*</span></label>
               <input type="tel" id="phone" placeholder="+211 912 000 000" />
               <div class="field-error" id="phone-error"></div>
             </div>
@@ -131,7 +131,7 @@
               <label>Clinic Number</label>
               <!-- Live preview of the auto-generated clinic number -->
               <div class="clinic-preview" id="clinic-number-preview">CLN-0000</div>
-              <input type="text" id="clinicNumber" placeholder="Leave blank for auto-generation" style="margin-top:6px;" />
+              <input type="text" id="clinicNumber" placeholder="Leave blank for auto-generation" class="clinic-number-input" />
             </div>
           </div>
           <!-- Consent must be checked before the form can be submitted -->
@@ -148,9 +148,9 @@
 
       <!-- Navigation buttons — register.js shows/hides these based on the current step -->
       <div class="wizard-actions">
-        <button class="btn btn-outline" id="back-btn" onclick="previousStep()" style="display:none;">← Back</button>
+        <button class="btn btn-outline wizard-btn-hidden" id="back-btn" onclick="previousStep()">← Back</button>
         <button class="btn btn-primary" id="next-btn" onclick="nextStep()">Next →</button>
-        <button class="btn btn-success" id="submit-btn" onclick="submitForm()" style="display:none;">Register Patient</button>
+        <button class="btn btn-success wizard-btn-hidden" id="submit-btn" onclick="submitForm()">Register Patient</button>
       </div>
 
     </div>

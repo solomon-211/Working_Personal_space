@@ -1,0 +1,72 @@
+.login-logo-icon {
+  width: 80px;
+  height: 80px;
+  background: #2563EB;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.login-logo-initials {
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+}
+
+.login-error {
+  display: none;
+  background: #FEE2E2;
+  color: #B91C1C;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper .form-control {
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.login-remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.login-remember-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.login-forgot-link {
+  font-size: 13px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.login-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 10px;
+}

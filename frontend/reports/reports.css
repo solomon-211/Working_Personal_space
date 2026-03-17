@@ -246,3 +246,9 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── reports/index.html extracted inline styles ── */
+
+.page-header-full {
+  grid-column: 1 / -1;
+}

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Billing — CCMS</title>
   <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="stylesheet" href="/billing/billing.css" />
 </head>
 <body>
 
@@ -15,7 +16,7 @@
 
 <!-- Create invoice modal — patient dropdown and service rows are populated by billing.js -->
 <div class="modal-overlay" id="create-invoice-modal">
-  <div class="modal" style="max-width:560px;">
+  <div class="modal modal-invoice">
     <div class="modal-header">
       <h3 class="modal-title">Create Invoice</h3>
       <button class="modal-close" onclick="hideModal('create-invoice-modal')">×</button>
@@ -28,24 +29,24 @@
     </div>
     <!-- Service line items — addServiceRow() appends rows dynamically -->
     <div class="form-group">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <label class="form-label" style="margin:0;">Services</label>
+      <div class="service-label-row">
+        <label class="form-label service-label">Services</label>
         <button type="button" class="btn btn-outline btn-sm" onclick="addServiceRow()">+ Add Service</button>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <table class="service-table">
         <thead>
-          <tr style="background:var(--bg);">
-            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border);">Service</th>
-            <th style="padding:8px;width:60px;text-align:right;border-bottom:1px solid var(--border);">Qty</th>
-            <th style="padding:8px;width:110px;text-align:right;border-bottom:1px solid var(--border);">Price (SSP)</th>
-            <th style="padding:8px;width:30px;border-bottom:1px solid var(--border);"></th>
+          <tr class="service-table-header">
+            <th class="col-service">Service</th>
+            <th class="col-qty">Quantity</th>
+            <th class="col-price">Price (SSP)</th>
+            <th class="col-remove"></th>
           </tr>
         </thead>
         <tbody id="services-tbody-new"></tbody>
       </table>
     </div>
     <!-- Running total updates as rows are added or quantities change -->
-    <div style="text-align:right;font-weight:700;font-size:15px;margin-bottom:16px;">
+    <div class="invoice-total-preview">
       Total: <span id="invoice-total-preview">0 SSP</span>
     </div>
     <div class="modal-footer">
@@ -97,15 +98,15 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Billing</h1>
-        <p style="font-size:13px;color:var(--text-muted);margin-top:2px;">Track invoices, balances, and payment status</p>
+        <p class="page-subtitle">Track invoices, balances, and payment status</p>
       </div>
       <button class="btn btn-primary" onclick="openCreateInvoice()">+ Create Invoice</button>
     </div>
 
     <!-- Filter bar — billing.js listens for input changes and re-renders the table -->
-    <div class="filter-bar" style="margin-bottom:16px;">
-      <input type="text" id="filter-patient" class="form-control" placeholder="Search by patient name or clinic number..." style="max-width:300px;">
-      <select id="filter-status" class="form-control" title="Filter by status" style="width:160px;">
+    <div class="filter-bar filter-bar-billing">
+      <input type="text" id="filter-patient" class="form-control filter-patient-input" placeholder="Search by patient name or clinic number...">
+      <select id="filter-status" class="form-control filter-status-select" title="Filter by status">
         <option value="">All Statuses</option>
         <option value="Unpaid">Unpaid</option>
         <option value="Partial">Partial</option>

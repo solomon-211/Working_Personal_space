@@ -259,3 +259,24 @@
     font-weight: 600;
   }
 }
+
+/* ── invoice.html extracted inline styles ── */
+
+.invoice-patient-name {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.invoice-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.invoice-due {
+  color: var(--danger);
+}
+
+.invoice-add-payment-btn {
+  display: none;
+}
