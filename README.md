@@ -91,37 +91,53 @@ SECRET_KEY=any-random-string
 ## Changes Made
 
 ### 1. `visit_id` column added to invoices table
-The original invoices table only linked to appointments, which broke for walk-in patients with no appointment. A `visit_id` column with a `UNIQUE` constraint was added to `invoices`, giving every invoice a direct, duplicate-proof link to its visit. A migration script (`add_visit_id_to_invoices.sql`) was created for existing databases.
+The original invoices table only linked to appointments, which broke for walk-in patients with no appointment. A `visit_id` column with a `UNIQUE` constraint was added to `invoices`, giving every invoice a direct, duplicate-proof link to its visit.
+- `db_setup/clinic_db.sql` — added `visit_id` column, unique key, and FK to `medical_visits`
+- `db_setup/add_visit_id_to_invoices.sql` — migration script for existing databases
 
 ### 2. Duplicate invoice prevention
 The backend had no guard against creating two invoices for the same visit. `create_invoice()` now requires `visit_id`, queries for an existing invoice before inserting, and returns HTTP 409 if one is found. The database unique constraint acts as a second safety net for race conditions.
+- `backend/routes/billing.py` — added pre-insert duplicate check and `IntegrityError` catch
 
 ### 3. Invoice status on the Medical Visits tab
 The visits tab showed a "Generate Invoice" button on every row regardless of whether an invoice existed. The visits query now LEFT JOINs invoices on `visit_id`, returning `has_invoice` and `linked_invoice_id` per visit. The button now shows "View Invoice", "Generate Invoice", or "Pending Invoice" based on status and role.
+- `backend/routes/medical_visits.py` — added LEFT JOIN on `visit_id` to visits query
+- `frontend/patients/profile.js` — added `renderVisitInvoiceCell()` function
 
 ### 4. No page redirect after invoice creation
-After creating an invoice, the page redirected away, and returning via the back button showed stale cached data with the wrong button state. `submitInvoice()` now stays on the page, invalidates the cache, and calls `loadVisits()` + `loadBilling()` in place. A toast confirms success.
+After creating an invoice, the page redirected away, and returning via the back button showed stale cached data with the wrong button state. `submitInvoice()` now stays on the page and calls `loadVisits()` + `loadBilling()` in place. A toast confirms success.
+- `frontend/patients/profile.js` — removed redirect from `submitInvoice()`, added in-place tab reload
 
 ### 5. Cache invalidation after invoice creation
-Only the `invoices` cache was cleared after creation, leaving `medical-visits` and `patients` caches stale for up to 30 seconds. Three caches are now invalidated together: `invoices`, `medical-visits:{patient_id}`, and `patients:`, so all parts of the UI reflect the new state immediately.
+Only the `invoices` cache was cleared after creation, leaving `medical-visits` and `patients` caches stale for up to 30 seconds. Three caches are now invalidated together so all parts of the UI reflect the new state immediately.
+- `backend/routes/billing.py` — added `cache_invalidate('medical-visits:{patient_id}')` and `cache_invalidate('patients:')`
 
 ### 6. Billing status on the patient list
-There was no way to see which patients needed an invoice without opening each profile individually. The patients query now returns `pending_invoice_count` and `invoiced_count` via conditional aggregation. The list shows an amber "Needs Invoice" or green "Invoiced" button for admin/receptionist, linking directly to the patient's visits tab.
+There was no way to see which patients needed an invoice without opening each profile individually. The patients query now returns `pending_invoice_count` and `invoiced_count` via conditional aggregation. The list shows an amber "Needs Invoice" or green "Invoiced" button for admin/receptionist.
+- `backend/routes/patients.py` — added `pending_invoice_count` and `invoiced_count` to patients query
+- `frontend/patients/list.js` — updated `renderTable()` to show billing status buttons
 
 ### 7. Billing actions on the appointments page
-After a doctor completed a consultation, admin/receptionist had to navigate away from appointments, find the patient, and locate the visit manually. The appointment view modal now shows "Generate Invoice" or "View Invoice" for completed appointments, using the `has_invoice` field already returned by the appointments API.
+After a doctor completed a consultation, admin/receptionist had to navigate away from appointments, find the patient, and locate the visit manually. The appointment view modal now shows "Generate Invoice" or "View Invoice" for completed appointments.
+- `frontend/appointments/appointments.js` — updated `openViewModal()` to render billing buttons for admin/receptionist
 
 ### 8. Auto-open Medical Visits tab via URL hash
-Navigation from the patient list and appointments page needed to land on the Medical Visits tab automatically. Profile pages now check `window.location.hash === '#billing'` on load and click the tab programmatically. All billing navigation links append `#billing` to the URL.
+Navigation from the patient list and appointments page needed to land on the Medical Visits tab automatically. Profile pages now check `window.location.hash === '#billing'` on load and click the tab programmatically.
+- `frontend/patients/profile.js` — added hash check and auto-tab click on page load
+- `frontend/patients/list.js` — `goToInvoice()` navigates with `#billing` hash
+- `frontend/appointments/appointments.js` — "Generate Invoice" button navigates with `#billing` hash
 
 ### 9. Edit button removed from patient list
-The Edit button on the patient list showed a "coming soon" toast and served no purpose. Patient editing exists on the profile page. The button was removed to reduce clutter — the Actions column now contains only meaningful actions.
+The Edit button on the patient list showed a "coming soon" toast and served no purpose. Patient editing exists on the profile page. The button was removed to reduce clutter.
+- `frontend/patients/list.js` — removed Edit button from `renderTable()`
 
 ### 10. Favicon added to all pages
 Every page load triggered a `404` error in the browser console because no favicon existed. An inline SVG data URI favicon (blue square, "HB" initials) was added to all 11 HTML files, eliminating the 404 with no extra files needed.
+- All 11 HTML files — added `<link rel="icon">` with inline SVG data URI to each `<head>`
 
 ### 11. Legacy invoice backfill
-After adding `visit_id`, all pre-migration invoices had `visit_id = NULL`, causing visits with existing invoices to still show "Generate Invoice". Each invoice was matched to its visit by `appointment_id` or by date/patient and updated with the correct `visit_id`. Unmatched orphan duplicates were left as NULL and do not affect new invoice creation.
+After adding `visit_id`, all pre-migration invoices had `visit_id = NULL`, causing visits with existing invoices to still show "Generate Invoice". Each invoice was matched to its visit by `appointment_id` or by date/patient and updated with the correct `visit_id`. Unmatched orphan duplicates were left as NULL.
+- `db_setup/add_visit_id_to_invoices.sql` — backfill UPDATE statements matching invoices to visits
 
 ---
 
