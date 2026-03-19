@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from config import get_db_connection
 from cache import cache_get, cache_set
 from routes.auth import login_required
+from typing import cast, Any
 
 doctors_bp = Blueprint('doctors', __name__)
 
@@ -28,7 +29,7 @@ def get_doctors():
     except Exception as e:
         return jsonify({'error': 'Could not retrieve doctors.', 'details': str(e)}), 503
 
-    cache_set('doctors:active', doctors, ttl=300)  # doctors list changes rarely — cache 5 min
+    cache_set('doctors:active', doctors, ttl=300)
     return jsonify({'doctors': doctors, 'source': 'db'}), 200
 
 
@@ -38,6 +39,10 @@ def get_doctors():
 def get_all_schedules():
     cached = cache_get('doctor-schedules:all')
     if cached:
+        for row in cached:
+            s = cast(dict[str, Any], row)
+            if hasattr(s.get('start_time'), 'total_seconds'):
+                s['start_time'] = str(s['start_time'])
         return jsonify({'schedules': cached, 'source': 'cache'}), 200
 
     try:
@@ -56,6 +61,11 @@ def get_all_schedules():
     except Exception as e:
         return jsonify({'error': 'Could not retrieve schedules.', 'details': str(e)}), 503
 
+    for row in schedules:
+        s = cast(dict[str, Any], row)
+        if hasattr(s.get('start_time'), 'total_seconds'):
+            s['start_time'] = str(s['start_time'])
+
     cache_set('doctor-schedules:all', schedules, ttl=300)
     return jsonify({'schedules': schedules, 'source': 'db'}), 200
 
@@ -63,7 +73,6 @@ def get_all_schedules():
 @doctors_bp.route('/doctor-schedules/<int:doctor_id>', methods=['GET'])
 @login_required
 def get_available_slots(doctor_id):
-    # Returns all the available unbooked slots 
     appt_date = request.args.get('date')
     if not appt_date:
         return jsonify({'error': 'Please provide a ?date=YYYY-MM-DD query parameter'}), 400
@@ -83,7 +92,6 @@ def get_available_slots(doctor_id):
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get the doctor's scheduled start time for this day
         cursor.execute("""
             SELECT start_time FROM doctor_schedule WHERE doctor_id = %s AND day_of_week = %s""", (doctor_id, day_name))
         schedule = cursor.fetchone()
@@ -92,11 +100,10 @@ def get_available_slots(doctor_id):
             conn.close()
             return jsonify({'available': False, 'message': 'Doctor does not work on this day'}), 200
 
-        # Find already-booked slots on this date
         cursor.execute("""
             SELECT appointment_datetime FROM appointments WHERE doctor_id = %s AND DATE(appointment_datetime) = %s AND status = 'Scheduled'
         """, (doctor_id, appt_date))
-        booked = [row['appointment_datetime'] for row in cursor.fetchall()]
+        booked = [cast(dict[str, Any], row)['appointment_datetime'] for row in cursor.fetchall()]
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not check availability.', 'details': str(e)}), 503
@@ -105,7 +112,7 @@ def get_available_slots(doctor_id):
         'doctor_id':   doctor_id,
         'date':        appt_date,
         'available':   True,
-        'start_time':  str(schedule['start_time']),
+        'start_time':  str(cast(dict[str, Any], schedule)['start_time']),
         'booked_slots': [str(b) for b in booked]
     }
     cache_set(cache_key, result, ttl=60)

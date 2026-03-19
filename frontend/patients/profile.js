@@ -19,6 +19,7 @@ let prescriptionsData = [];
 let appointmentsData  = [];
 let billingData       = [];
 let allServices       = [];
+const currentRole = sessionStorage.getItem('role') || '';
 
 // Build a single label/value row for the info panels
 function infoRow(label, value) {
@@ -31,6 +32,32 @@ function infoRow(label, value) {
 // Render a diagnosis as a small pill/chip
 function diagChip(text) {
   return `<span style="display:inline-flex;padding:3px 8px;border-radius:999px;background:#E0F2FE;color:#0F172A;font-size:11px;margin:0 4px 4px 0;">${text}</span>`;
+}
+
+function renderAppointmentInvoiceCell(appt) {
+  const hasInvoice = Number(appt.has_invoice) === 1 || !!appt.linked_invoice_id;
+
+  if (hasInvoice) {
+    return `
+      <span class="badge badge-paid" style="margin-right:8px;">Created</span>
+      <a href="/billing/invoice.html?id=${appt.linked_invoice_id}" class="btn btn-outline btn-sm">View</a>
+    `;
+  }
+
+  if (appt.status === 'Completed') {
+    if (currentRole === 'admin' || currentRole === 'receptionist') {
+      return `<button class="btn btn-primary btn-sm" onclick="createInvoiceFromAppointment(${appt.appointment_id})">Create Invoice</button>`;
+    }
+    return '<span class="badge badge-partial">Pending Invoice</span>';
+  }
+
+  return '<span class="badge badge-unpaid">Not Ready</span>';
+}
+
+function createInvoiceFromAppointment(appointmentId) {
+  sessionStorage.setItem('prefillInvoicePatientId', String(patientId));
+  sessionStorage.setItem('prefillInvoiceAppointmentId', String(appointmentId));
+  location.href = '/billing/index.html';
 }
 
 // Update the summary stat cards at the top of the profile page
@@ -75,6 +102,16 @@ async function loadPatient() {
   }
 }
 
+function renderVisitInvoiceCell(visit, role) {
+  if (Number(visit.has_invoice) === 1) {
+    return `<a href="/billing/invoice.html?id=${visit.linked_invoice_id}" class="btn btn-outline btn-sm">View Invoice</a>`;
+  }
+  if (role === 'admin' || role === 'receptionist') {
+    return `<button class="btn btn-primary btn-sm" onclick="openInvoiceModal(${visit.visit_id}, ${JSON.stringify(visit).replace(/"/g,'&quot;')})">Generate Invoice</button>`;
+  }
+  return '<span class="badge badge-partial">Pending Invoice</span>';
+}
+
 // Load the patient's medical visit history with diagnoses attached
 async function loadVisits() {
   try {
@@ -91,9 +128,7 @@ async function loadVisits() {
           <td>${v.doctor_name ?? '—'}</td>
           <td style="font-size:12px;">${(v.diagnoses ?? []).map(diagChip).join('') || '—'}</td>
           <td style="font-size:12px;color:var(--text-muted);max-width:260px;">${v.notes ?? '—'}</td>
-          <td>${(role === 'admin' || role === 'receptionist')
-            ? `<button class="btn btn-outline btn-sm" onclick="openInvoiceModal(${v.visit_id}, ${JSON.stringify(v).replace(/"/g,'&quot;')})">Invoice</button>`
-            : ''}</td>
+          <td>${renderVisitInvoiceCell(v, role)}</td>
         </tr>`).join('');
     }
   } catch (e) {
@@ -137,7 +172,7 @@ async function loadAppointments() {
     appointmentsData = data?.appointments ?? [];
     const tbody = document.getElementById('appts-tbody');
     if (!appointmentsData.length) {
-      tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">No appointments found</div></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">No appointments found</div></div></td></tr>';
     } else {
       tbody.innerHTML = appointmentsData.map(a => `
         <tr>
@@ -145,12 +180,13 @@ async function loadAppointments() {
           <td>${a.doctor_name ?? '—'}</td>
           <td style="font-size:12px;">${a.reason ?? '—'}</td>
           <td>${renderBadge(a.status)}</td>
+          <td>${renderAppointmentInvoiceCell(a)}</td>
         </tr>`).join('');
     }
   } catch (e) {
     appointmentsData = [];
     document.getElementById('appts-tbody').innerHTML =
-      '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-text">Could not load appointments</div></div></td></tr>';
+      '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-text">Could not load appointments</div></div></td></tr>';
   }
   renderPatientSummary();
 }
@@ -226,11 +262,13 @@ async function savePatient() {
 }
 
 // Track which visit the invoice modal was opened for
-let invoiceVisitId = null;
+let invoiceVisitId   = null;
+let invoiceVisitData = null;
 
 // Open the create invoice modal for a specific visit
 async function openInvoiceModal(visitId, visitObj) {
-  invoiceVisitId = visitId;
+  invoiceVisitId   = visitId;
+  invoiceVisitData = visitObj;
   document.getElementById('inv-items-tbody').innerHTML = '';
   document.getElementById('inv-discount').value = '0';
   document.getElementById('inv-total').textContent = 'SSP 0.00';
@@ -251,7 +289,8 @@ async function openInvoiceModal(visitId, visitObj) {
 
 function closeInvoiceModal() {
   hideModal('invoice-modal');
-  invoiceVisitId = null;
+  invoiceVisitId   = null;
+  invoiceVisitData = null;
 }
 
 // Add a new service line item row to the invoice form
@@ -301,7 +340,7 @@ function updateInvTotal() {
   document.getElementById('inv-total').textContent = `SSP ${Math.max(0, subtotal - discount).toFixed(2)}`;
 }
 
-// Submit the invoice to the backend — items use service_id, not service names
+// Submit the invoice to the backend — visit_id is required to link and deduplicate
 async function submitInvoice() {
   const items = [];
   document.querySelectorAll('#inv-items-tbody tr').forEach(tr => {
@@ -317,11 +356,17 @@ async function submitInvoice() {
   try {
     const res = await apiFetch('/api/invoices', {
       method: 'POST',
-      body: JSON.stringify({ patient_id: parseInt(patientId), items, discount })
+      body: JSON.stringify({
+        patient_id: parseInt(patientId),
+        visit_id:   invoiceVisitId,
+        items,
+        discount
+      })
     });
     closeInvoiceModal();
-    showToast('Invoice created', 'success');
-    location.href = `/billing/invoice.html?id=${res.invoice_id}`;
+    showToast('Invoice created successfully.', 'success');
+    await loadVisits();
+    await loadBilling();
   } catch (e) {
     showToast(e.message || 'Failed to create invoice', 'error');
   }
@@ -336,3 +381,11 @@ loadBilling();
 
 // If the URL has ?edit=true, open the edit modal automatically
 if (params.get('edit') === 'true') setTimeout(openEditModal, 500);
+
+// If arriving from the appointments page via Generate Invoice, open the visits tab
+if (window.location.hash === '#billing') {
+  setTimeout(() => {
+    const btn = document.querySelector('.tab-btn[onclick*="visits"]');
+    if (btn) { btn.click(); }
+  }, 600);
+}

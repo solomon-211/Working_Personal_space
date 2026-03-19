@@ -353,13 +353,6 @@
   overflow-x: auto;
 }
 
-/* ── appointments/index.html extracted inline styles ── */
-
-.apt-search-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
 .summary-modal-header {
   background: #F0FDF4;
   border-bottom: 1px solid #BBF7D0;
@@ -371,4 +364,9 @@
 
 .summary-modal-body {
   padding: 20px 24px;
+}
+
+.apt-search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }

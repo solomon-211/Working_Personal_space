@@ -23,25 +23,29 @@ def get_patients():
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        base_select = """
+                SELECT p.patient_id, p.first_name, p.last_name, p.date_of_birth,
+                       p.gender, p.phone, p.email, p.blood_type, p.clinic_number,
+                       p.insurance_provider, p.registered_at,
+                       COUNT(DISTINCT CASE WHEN i.invoice_id IS NULL THEN v.visit_id END) AS pending_invoice_count,
+                       COUNT(DISTINCT CASE WHEN i.invoice_id IS NOT NULL THEN v.visit_id END) AS invoiced_count
+                FROM patients p
+                LEFT JOIN medical_visits v ON v.patient_id = p.patient_id
+                LEFT JOIN invoices i ON i.visit_id = v.visit_id
+        """
         if search:
             like = f'%{search}%'
-            cursor.execute("""
-                SELECT patient_id, first_name, last_name, date_of_birth,
-                       gender, phone, email, blood_type, clinic_number,
-                       insurance_provider, registered_at
-                FROM patients
-                WHERE first_name LIKE %s
-                   OR last_name  LIKE %s
-                   OR clinic_number LIKE %s
-                ORDER BY last_name
+            cursor.execute(base_select + """
+                WHERE p.first_name LIKE %s
+                   OR p.last_name  LIKE %s
+                   OR p.clinic_number LIKE %s
+                GROUP BY p.patient_id
+                ORDER BY p.last_name
             """, (like, like, like))
         else:
-            cursor.execute("""
-                SELECT patient_id, first_name, last_name, date_of_birth,
-                       gender, phone, email, blood_type, clinic_number,
-                       insurance_provider, registered_at
-                FROM patients
-                ORDER BY last_name
+            cursor.execute(base_select + """
+                GROUP BY p.patient_id
+                ORDER BY p.last_name
             """)
 
         patients = cursor.fetchall()

@@ -220,8 +220,55 @@ function renderChart(type) {
       }).join('');
     }, 50);
 
+  } else if (type === 'financial') {
+    const byMethod = (reportData.details || []).filter(r => r.Category === 'Payment Method');
+    const total = byMethod.reduce((s, r) => s + Number(r.Total || 0), 0) || 1;
+    const colors = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+    el.innerHTML = `
+      <div class="chart-container">
+        <div class="chart-title">Revenue by Payment Method</div>
+        <div style="display:flex;gap:20px;align-items:center;margin-top:12px;">
+          <canvas id="fin-chart" width="200" height="200"></canvas>
+          <div id="fin-legend" style="flex:1;"></div>
+        </div>
+      </div>`;
+    setTimeout(() => {
+      drawPie('fin-chart', byMethod.map(r => Number(r.Total)), colors);
+      document.getElementById('fin-legend').innerHTML = byMethod.map((r, i) => {
+        const pct = Math.round(Number(r.Total) / total * 100);
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:12px;height:12px;border-radius:2px;background:${colors[i]};"></div>
+          <span style="font-size:12px;">${r.Label}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${formatCurrency(Number(r.Total))} (${pct}%)</span>
+        </div>`;
+      }).join('');
+    }, 50);
+
+  } else if (type === 'operational') {
+    const byStatus = reportData.details || [];
+    const total = byStatus.reduce((s, r) => s + Number(r.Count || 0), 0) || 1;
+    const colors = ['#10B981','#2563EB','#F59E0B','#EF4444','#8B5CF6','#0EA5E9'];
+    el.innerHTML = `
+      <div class="chart-container">
+        <div class="chart-title">Appointments by Status</div>
+        <div style="display:flex;gap:20px;align-items:center;margin-top:12px;">
+          <canvas id="op-chart" width="200" height="200"></canvas>
+          <div id="op-legend" style="flex:1;"></div>
+        </div>
+      </div>`;
+    setTimeout(() => {
+      drawPie('op-chart', byStatus.map(r => Number(r.Count)), colors);
+      document.getElementById('op-legend').innerHTML = byStatus.map((r, i) => {
+        const pct = Math.round(Number(r.Count) / total * 100);
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:12px;height:12px;border-radius:2px;background:${colors[i]};"></div>
+          <span style="font-size:12px;">${r.Status}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${r.Count} (${pct}%)</span>
+        </div>`;
+      }).join('');
+    }, 50);
+
   } else {
-    // Financial and operational reports don't have a chart — clear the area
     el.innerHTML = '';
   }
 }

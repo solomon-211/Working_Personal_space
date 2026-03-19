@@ -1,93 +1,119 @@
-# HealthBridge — How to Run
+# HealthHub Bridge — Clinic & Care Management System
+
+A web-based clinic management system built with Flask, MySQL, and vanilla HTML/CSS/JS. Covers patient registration, appointments, doctor consultations, medical visits, prescriptions, and billing.
+
+---
 
 ## Prerequisites
-- Python 3.10+
-- MySQL 8+
-- A static file server (e.g. VS Code Live Server)
+
+| Tool | Version |
+|---|---|
+| Python | 3.10+ |
+| MySQL | 8.0+ |
+| VS Code + Live Server extension | Any |
 
 ---
 
-## 1. Database
+## Running the Project
 
-1. Open MySQL and create the database:
-   ```sql
-   CREATE DATABASE healthbridge_db;
-   ```
-2. Import the schema and test data:
-   ```bash
-   mysql -u root -p healthbridge_db < database/clinic_db.sql
-   mysql -u root -p healthbridge_db < database/test_data.sql
-   ```
+### 1 — Start MySQL
 
----
+Make sure MySQL is running, then open a terminal and connect:
+```bash
+mysql -u root -p
+```
 
-## 2. Backend
+### 2 — Set Up the Database
+
+Inside the MySQL prompt, run in this order:
+```sql
+SOURCE db_setup/clinic_db.sql;
+SOURCE db_setup/add_unique_invoice_appointment_index.sql;
+SOURCE db_setup/add_visit_id_to_invoices.sql;
+SOURCE db_setup/test_data.sql;
+```
+> Skip `test_data.sql` if you want a clean empty database.
+
+### 3 — Install Python Dependencies
 
 ```bash
-cd backend
+cd HealthHubBridge_Project/backend
+pip install -r requirements.txt
 ```
 
-Copy the example env file and fill in your MySQL credentials:
-```bash
-copy .env.example .env
-```
+### 4 — Configure the Backend
 
-`.env` values to set:
-```
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=healthbridge_db
+Create a `.env` file inside `backend/`:
+```env
+DB_PASSWORD=your_mysql_root_password
 SECRET_KEY=any-random-string
 ```
 
-Install dependencies and start the server:
+### 5 — Start the Backend
+
 ```bash
-pip install -r requirements.txt
+cd HealthHubBridge_Project/backend
 python app.py
 ```
+API runs at `http://localhost:5000`. Keep this terminal open.
 
-Backend runs at `http://localhost:5000`.
+### 6 — Serve the Frontend
 
----
+Open `HealthHubBridge_Project/frontend/` in VS Code, right-click `index.html`, and select **Open with Live Server**. Must run on port **5500**.
 
-## 3. Frontend
+### 7 — Log In
 
-Open the `frontend/` folder with **VS Code Live Server** (or any static server).
-
-- Default Live Server address: `http://127.0.0.1:5500`
-- Start at `frontend/auth/login.html`
-
----
-
-## Test Credentials
+Go to `http://127.0.0.1:5500` and use a test account:
 
 | Username | Password | Role |
 |---|---|---|
-| `admin.juba` | `admin123` | Admin |
-| `j.lual` | `doctor123` | Doctor |
-| `g.akuei` | `doctor123` | Doctor |
-| `amina.lado` | `recep123` | Receptionist |
-| `john.ladu` | `recep123` | Receptionist |
+| `admin` | `admin123` | Admin |
+| `doctor1` | `doctor123` | Doctor |
+| `receptionist1` | `recep123` | Receptionist |
 
 ---
 
-## Known Fixes
+## User Roles & Permissions
 
-### Consultation saving (400 Bad Request on `POST /api/medical-visits`)
+| Feature | Admin | Receptionist | Doctor |
+|---|---|---|---|
+| View patients | ✅ | ✅ | ✅ |
+| Register / edit patients | ✅ | ✅ | ❌ |
+| Schedule / cancel appointments | ✅ | ✅ | ❌ |
+| Run consultations | ❌ | ❌ | ✅ |
+| Create invoices | ✅ | ✅ | ❌ |
+| Record payments | ✅ | ✅ | ❌ |
+| View reports | ✅ | ❌ | ✅ |
+| Manage doctors | ✅ | ❌ | ❌ |
 
-**Root cause:** The `GET /api/appointments` query did not return `patient_id` or `doctor_id`, so the consultation form was sending `undefined` for both required fields.
+---
 
-**Fix applied:**
-- `backend/routes/appointments.py` — added `a.patient_id, a.doctor_id` to the SELECT in both `get_appointments()` and `get_today_appointments()`
-- `frontend/appointments/appointments.js` — `submitConsultation()` now reads `appt.patient_id` and `appt.doctor_id` directly from the appointment object, which are now present in the API response
+## Key Business Rules
 
-### Appointment status guard (defensive transition validation)
+- **One visit = one invoice.** Enforced by a `UNIQUE` constraint on `invoices.visit_id` and a 409 check in the API.
+- **Invoice creation requires a completed consultation.** The doctor must submit the consultation form first.
+- **Only admin/receptionist can create invoices.** Doctors can view but not bill.
+- **Payments cannot exceed the remaining balance.**
+- **Non-cash payments require a reference** (card last 4 digits, mobile transaction ID, or insurance claim number).
+- **Sessions expire after 1 hour** of inactivity.
 
-**Root cause:** The PATCH route accepted any valid status string regardless of the appointment's current state, making it possible to update already-completed or cancelled appointments.
+---
 
-**Fix applied:**
-- `backend/routes/appointments.py` — `update_appointment_status()` now fetches the current status before updating and enforces allowed transitions:
-  - `Scheduled` → `Completed`, `Cancelled`, `No-show` (allowed)
-  - `Completed`, `Cancelled`, `No-show` → anything (blocked with 409)
-- Attempting an invalid transition returns a clear error: `Cannot update a Completed appointment`
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/logout` | Logout |
+| GET/POST | `/api/patients` | List / register patients |
+| GET/PATCH | `/api/patients/:id` | Get / update patient |
+| GET | `/api/doctors` | List doctors |
+| GET/POST | `/api/appointments` | List / book appointments |
+| PATCH | `/api/appointments/:id` | Update appointment status |
+| GET/POST | `/api/medical-visits/:patient_id` | Get / create visit records |
+| POST | `/api/diagnoses` | Add diagnosis to visit |
+| GET/POST | `/api/prescriptions/:patient_id` | Get / add prescriptions |
+| GET | `/api/services` | List billable services |
+| GET/POST | `/api/invoices` | List / create invoices |
+| GET | `/api/invoices/:id` | Get invoice detail |
+| POST | `/api/payments` | Record payment |

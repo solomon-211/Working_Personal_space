@@ -1,100 +1,100 @@
 .modal-invoice {
-  max-width: 580px;
-}
-
-.visit-summary-box {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
-.visit-summary-heading {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}
-
-.visit-summary-muted {
-  color: var(--text-muted);
-}
-
-.visit-summary-diagnoses {
-  margin-top: 4px;
-}
-
-.invoice-service-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.invoice-service-label-row .form-label {
-  margin: 0;
-}
-
-.invoice-service-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.invoice-service-table-header {
-  background: var(--bg);
-}
-
-.invoice-service-table th {
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.col-service {
-  text-align: left;
-}
-
-.col-qty {
-  width: 60px;
-  text-align: right;
-}
-
-.col-price {
-  width: 110px;
-  text-align: right;
-}
-
-.col-remove {
-  width: 30px;
-}
-
-.invoice-discount-row {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
-.invoice-discount-label {
-  color: var(--text-muted);
-}
-
-.invoice-discount-input {
-  width: 90px;
-  margin-left: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-}
-
-.invoice-total-display {
-  font-weight: 700;
-  font-size: 15px;
-}
+    max-width: 580px;
+  }
+  
+  .visit-summary-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  
+  .visit-summary-heading {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  
+  .visit-summary-muted {
+    color: var(--text-muted);
+  }
+  
+  .visit-summary-diagnoses {
+    margin-top: 4px;
+  }
+  
+  .invoice-service-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .invoice-service-label-row .form-label {
+    margin: 0;
+  }
+  
+  .invoice-service-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  
+  .invoice-service-table-header {
+    background: var(--bg);
+  }
+  
+  .invoice-service-table th {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .col-service {
+    text-align: left;
+  }
+  
+  .col-qty {
+    width: 60px;
+    text-align: right;
+  }
+  
+  .col-price {
+    width: 110px;
+    text-align: right;
+  }
+  
+  .col-remove {
+    width: 30px;
+  }
+  
+  .invoice-discount-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  
+  .invoice-discount-label {
+    color: var(--text-muted);
+  }
+  
+  .invoice-discount-input {
+    width: 90px;
+    margin-left: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  
+  .invoice-total-display {
+    font-weight: 700;
+    font-size: 15px;
+  }

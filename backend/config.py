@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file if it exists
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'healthbridge-dev-secret-key')
@@ -27,3 +29,4 @@ def get_db_connection():
         connect_timeout = 10       # fail fast on bad network instead of hanging
     )
     return conn
+
