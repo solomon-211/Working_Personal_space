@@ -107,10 +107,20 @@ def get_upcoming_appointments():
     cached = cache_get(cache_key)
     if cached:
         return jsonify({'appointments': cached, 'source': 'cache'}), 200
- 
+
     try:
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Auto-mark past scheduled appointments as No-show
+        cursor.execute("""
+            UPDATE appointments
+            SET status = 'No-show'
+            WHERE status = 'Scheduled'
+              AND DATE(appointment_datetime) < CURDATE()
+        """)
+        conn.commit()
+
         cursor.execute("""
             SELECT a.appointment_id, a.appointment_datetime, a.reason, a.status,
                    a.patient_id, a.doctor_id,
@@ -120,14 +130,15 @@ def get_upcoming_appointments():
             JOIN patients p ON a.patient_id = p.patient_id
             JOIN doctors  d ON a.doctor_id  = d.doctor_id
             WHERE a.status = 'Scheduled'
-              AND a.appointment_datetime >= NOW()
+              AND DATE(a.appointment_datetime) >= CURDATE()
             ORDER BY a.appointment_datetime
         """)
         appointments = cursor.fetchall()
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not retrieve upcoming appointments.', 'details': str(e)}), 503
- 
+
+    cache_invalidate('appointments')
     cache_set(cache_key, appointments, ttl=60)
     return jsonify({'appointments': appointments, 'source': 'db'}), 200
 

@@ -248,19 +248,19 @@ def operational_report():
         """, (date_from, date_to))
         by_status = cursor.fetchall()
 
-        cursor.execute("""
-            SELECT AVG(avg_wait_time_min) AS avg_wait
-            FROM analytics_snapshots
-            WHERE snapshot_date BETWEEN %s AND %s
-        """, (date_from, date_to))
-        avg_wait = cursor.fetchone()
-
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not generate operational report.', 'details': str(e)}), 503
 
+    total     = sum(r['count'] for r in by_status)
+    scheduled = next((r['count'] for r in by_status if r['status'] == 'Scheduled'), 0)
+    no_show   = next((r['count'] for r in by_status if r['status'] == 'No-show'),   0)
+    scheduled_rate = round((scheduled / total * 100), 1) if total else 0
+    no_show_rate   = round((no_show   / total * 100), 1) if total else 0
+
     return jsonify({
-        'period':                {'from': date_from, 'to': date_to},
+        'period':                 {'from': date_from, 'to': date_to},
         'appointments_by_status': by_status,
-        'avg_wait_time_minutes':  float(avg_wait['avg_wait'] or 0)
+        'scheduled_rate':         scheduled_rate,
+        'no_show_rate':           no_show_rate
     }), 200

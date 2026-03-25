@@ -68,12 +68,12 @@ INSERT INTO `services` VALUES
 (5, 'ORS Administration',   'Oral rehydration therapy for dehydration cases',  150.00,  'Procedures');
 
 -- invoices
-INSERT INTO `invoices` VALUES
-(1, 1, 1, '2025-06-10', 800.00,  0.00,   800.00,  'Paid'),
-(2, 2, 2, '2025-06-11', 350.00,  0.00,   350.00,  'Paid'),
-(3, 3, 3, '2025-06-12', 500.00,  50.00,  450.00,  'Paid'),
-(4, 4, 4, '2025-06-13', 400.00,  0.00,   400.00,  'Unpaid'),
-(5, 2, NULL,'2025-06-14', 650.00, 0.00,   650.00,  'Partial');
+INSERT INTO `invoices` (invoice_id, patient_id, visit_id, appointment_id, invoice_date, total_amount, discount, amount_due, payment_status) VALUES
+(1, 1, 1, 1, '2025-06-10', 800.00,  0.00,   800.00,  'Paid'),
+(2, 2, 2, 2, '2025-06-11', 350.00,  0.00,   350.00,  'Paid'),
+(3, 3, 3, 3, '2025-06-12', 500.00,  50.00,  450.00,  'Paid'),
+(4, 4, 4, 4, '2025-06-13', 400.00,  0.00,   400.00,  'Unpaid'),
+(5, 2, 5, NULL,'2025-06-14', 650.00, 0.00,   650.00,  'Partial');
 
 -- invoice_items
 INSERT INTO `invoice_items` VALUES

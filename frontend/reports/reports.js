@@ -120,7 +120,8 @@ async function generateReport(type) {
         total_appointments: total,
         completion_rate:    total ? (Number(completed) / total * 100) : 0,
         cancellation_rate:  total ? (Number(cancelled) / total * 100) : 0,
-        avg_wait_time:      Number(res?.avg_wait_time_minutes || 0),
+        scheduled_rate:     Number(res?.scheduled_rate || 0),
+        no_show_rate:       Number(res?.no_show_rate   || 0),
         details: byStatus.map(r => ({ Status: r.status, Count: r.count }))
       };
     }
@@ -160,9 +161,10 @@ function renderSummaryCards(type) {
     html += card('Top Diagnosis', reportData.top_diagnosis);
   } else if (type === 'operational') {
     html += card('Total Appointments', reportData.total_appointments);
-    html += card('Completion Rate', reportData.completion_rate.toFixed(1) + '%');
+    html += card('Completion Rate',   reportData.completion_rate.toFixed(1)  + '%');
     html += card('Cancellation Rate', reportData.cancellation_rate.toFixed(1) + '%');
-    html += card('Avg Wait Time', reportData.avg_wait_time + ' min');
+    html += card('No-show Rate',      reportData.no_show_rate.toFixed(1)      + '%');
+    html += card('Scheduled Rate',    reportData.scheduled_rate.toFixed(1)    + '%');
   }
 
   html += '</div>';
