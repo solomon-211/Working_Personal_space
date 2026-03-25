@@ -67,12 +67,59 @@ function logout() {
 }
 
 
+// ─── IndexedDB Cache ─────────────────────────────────────────────────────────
+
+/**
+ * Lightweight IndexedDB wrapper used as a fallback cache.
+ * When the backend is unreachable, apiFetch serves the last known response
+ * from IndexedDB so the UI still renders with stale data instead of breaking.
+ * Only GET responses are cached — mutations are never served from cache.
+ */
+const idbCache = (() => {
+  const DB_NAME    = 'hb-cache';
+  const STORE_NAME = 'responses';
+  const DB_VERSION = 1;
+
+  function open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = e => e.target.result.createObjectStore(STORE_NAME);
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  async function get(key) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_NAME).objectStore(STORE_NAME).get(key);
+      req.onsuccess = e => resolve(e.target.result ?? null);
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  async function set(key, value) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).put(value, key);
+      req.onsuccess = () => resolve();
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  return { get, set };
+})();
+
+
 // ─── API Communication ────────────────────────────────────────────────────────
 
 /**
  * Send an authenticated request to the backend API.
  * Shows the global spinner while the request is in flight.
  * Automatically logs out on 401 responses.
+ * On network failure or 5xx errors, falls back to the last IndexedDB-cached
+ * response for GET requests and shows a warning toast.
  *
  * @param {string} endpoint - Path relative to the API base (e.g. '/api/patients')
  * @param {object} options  - Standard fetch options (method, body, headers, etc.)
@@ -81,6 +128,8 @@ function logout() {
 async function apiFetch(endpoint, options = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet  = method === 'GET';
 
   const requestConfig = {
     ...options,
@@ -118,7 +167,6 @@ async function apiFetch(endpoint, options = {}) {
           }
         }
       } else if (!response.ok) {
-        // For error cases, surface plain text from the server when available.
         data = { error: rawText.trim() };
       }
     }
@@ -128,9 +176,25 @@ async function apiFetch(endpoint, options = {}) {
       throw new Error(serverMessage || `Request failed (HTTP ${response.status})`);
     }
 
+    // Cache successful GET responses so they can be served if the backend fails later.
+    if (isGet && data) {
+      idbCache.set(endpoint, data).catch(() => {});
+    }
+
     return data ?? {};
 
   } catch (error) {
+    // On network failure or server error, try to serve the last cached GET response.
+    if (isGet) {
+      try {
+        const cached = await idbCache.get(endpoint);
+        if (cached) {
+          showToast('Showing cached data — backend unreachable', 'warning');
+          return cached;
+        }
+      } catch (_) {}
+    }
+
     if (error && error.name === 'TypeError') {
       showToast('Cannot connect to server. Is Flask running?', 'error');
     } else {
