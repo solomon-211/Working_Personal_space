@@ -165,7 +165,6 @@ function renderSummaryCards(type) {
     html += card('Cancellation Rate', reportData.cancellation_rate.toFixed(1) + '%');
     html += card('No-show Rate',      reportData.no_show_rate.toFixed(1)      + '%');
     html += card('Scheduled Rate',    reportData.scheduled_rate.toFixed(1)    + '%');
-    html += card('Avg Wait Time',     reportData.avg_wait_time + ' min');
   }
 
   html += '</div>';
@@ -223,8 +222,55 @@ function renderChart(type) {
       }).join('');
     }, 50);
 
+  } else if (type === 'financial') {
+    const byMethod = (reportData.details || []).filter(r => r.Category === 'Payment Method');
+    const colors   = ['#2563EB','#10B981','#F59E0B','#8B5CF6','#EF4444','#0EA5E9'];
+    const total    = byMethod.reduce((s, r) => s + Number(r.Total || 0), 0) || 1;
+    el.innerHTML = `
+      <div class="chart-container">
+        <div class="chart-title">Revenue by Payment Method</div>
+        <div style="display:flex;gap:20px;align-items:center;margin-top:12px;">
+          <canvas id="fin-chart" width="180" height="180"></canvas>
+          <div id="fin-legend" style="flex:1;"></div>
+        </div>
+      </div>`;
+    setTimeout(() => {
+      drawPie('fin-chart', byMethod.map(r => Number(r.Total)), colors);
+      document.getElementById('fin-legend').innerHTML = byMethod.map((r, i) => {
+        const pct = Math.round(Number(r.Total) / total * 100);
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:12px;height:12px;border-radius:2px;background:${colors[i]};"></div>
+          <span style="font-size:12px;">${r.Label}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${formatCurrency(r.Total)} (${pct}%)</span>
+        </div>`;
+      }).join('');
+    }, 50);
+
+  } else if (type === 'operational') {
+    const byStatus = reportData.details || [];
+    const colors   = ['#10B981','#EF4444','#64748B','#2563EB'];
+    const total    = byStatus.reduce((s, r) => s + Number(r.Count || 0), 0) || 1;
+    el.innerHTML = `
+      <div class="chart-container">
+        <div class="chart-title">Appointments by Status</div>
+        <div style="display:flex;gap:20px;align-items:center;margin-top:12px;">
+          <canvas id="op-chart" width="180" height="180"></canvas>
+          <div id="op-legend" style="flex:1;"></div>
+        </div>
+      </div>`;
+    setTimeout(() => {
+      drawPie('op-chart', byStatus.map(r => Number(r.Count)), colors);
+      document.getElementById('op-legend').innerHTML = byStatus.map((r, i) => {
+        const pct = Math.round(Number(r.Count) / total * 100);
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:12px;height:12px;border-radius:2px;background:${colors[i]};"></div>
+          <span style="font-size:12px;">${r.Status}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${r.Count} (${pct}%)</span>
+        </div>`;
+      }).join('');
+    }, 50);
+
   } else {
-    // Financial and operational reports don't have a chart — clear the area
     el.innerHTML = '';
   }
 }

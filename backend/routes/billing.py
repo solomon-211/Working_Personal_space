@@ -171,11 +171,12 @@ def create_invoice():
         # Insert the invoice header
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO invoices (patient_id, appointment_id, invoice_date,
+            INSERT INTO invoices (patient_id, visit_id, appointment_id, invoice_date,
                                   total_amount, discount, amount_due, payment_status)
-            VALUES (%s, %s, CURDATE(), %s, %s, %s, 'Unpaid')
+            VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, 'Unpaid')
         """, (
             data['patient_id'],
+            data.get('visit_id'),
             data.get('appointment_id'),
             total, discount, amount_due
         ))

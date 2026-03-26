@@ -231,6 +231,11 @@ body {
   color: white;
 }
 
+.btn-warning {
+  background: #F59E0B;
+  color: white;
+}
+
 .btn-danger {
   background: var(--danger);
   color: white;

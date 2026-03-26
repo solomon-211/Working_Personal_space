@@ -101,7 +101,33 @@ const idbCache = (() => {
     });
   }
 
-  return { get, set };
+  async function del(key) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx  = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror   = e => reject(e.target.error);
+    });
+  }
+
+  async function invalidate(prefix) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx      = db.transaction(STORE_NAME, 'readwrite');
+      const store   = tx.objectStore(STORE_NAME);
+      const req     = store.getAllKeys();
+      req.onsuccess = e => {
+        e.target.result
+          .filter(k => k.startsWith(prefix))
+          .forEach(k => store.delete(k));
+        resolve();
+      };
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+
+  return { get, set, del, invalidate };
 })();
 
 
@@ -169,6 +195,23 @@ async function apiFetch(endpoint, options = {}) {
 
     if (isGet && data) {
       idbCache.set(endpoint, data).catch(() => {});
+    }
+
+    // When a mutation succeeds, invalidate related GET caches
+    if (!isGet) {
+      const invalidations = {
+        '/api/invoices':        ['/api/patients', '/api/invoices', '/api/medical-visits'],
+        '/api/payments':        ['/api/invoices'],
+        '/api/patients':        ['/api/patients'],
+        '/api/appointments':    ['/api/appointments'],
+        '/api/medical-visits':  ['/api/medical-visits', '/api/patients'],
+        '/api/prescriptions':   ['/api/prescriptions'],
+        '/api/diagnoses':       ['/api/medical-visits'],
+      };
+      const base = Object.keys(invalidations).find(k => endpoint.startsWith(k));
+      if (base) {
+        invalidations[base].forEach(prefix => idbCache.invalidate(prefix).catch(() => {}));
+      }
     }
 
     return data ?? {};

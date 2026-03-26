@@ -174,7 +174,7 @@ def book_appointment():
         cursor.execute("""
             SELECT appointment_id FROM appointments
             WHERE doctor_id = %s
-              AND a.status    = 'Scheduled'
+              AND status    = 'Scheduled'
               AND ABS(TIMESTAMPDIFF(MINUTE, appointment_datetime, %s)) < 30
         """, (data['doctor_id'], data['appointment_datetime']))
         if cursor.fetchone():

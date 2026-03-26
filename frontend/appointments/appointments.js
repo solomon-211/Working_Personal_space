@@ -156,17 +156,13 @@ function renderTable() {
 }
 
 function renderStatusTracker(status, isApproved) {
-  const step = status === 'Completed' ? 3 : (isApproved ? 2 : 1);
-  const dot = (active) => `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${active ? '#22C55E' : '#E2E8F0'};"></span>`;
-  const line = (active) => `<span style="display:inline-block;width:18px;height:2px;background:${active ? '#22C55E' : '#E2E8F0'};vertical-align:middle;margin:0 2px;"></span>`;
+  if (status === 'Cancelled' || status === 'No-show') return renderBadge(status);
+  const dot   = (active) => `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${active ? '#22C55E' : '#E2E8F0'};"></span>`;
+  const line  = (active) => `<span style="display:inline-block;width:18px;height:2px;background:${active ? '#22C55E' : '#E2E8F0'};vertical-align:middle;margin:0 2px;"></span>`;
   const label = (text, color, bold) => `<span style="font-size:11px;color:${color};${bold ? 'font-weight:600;' : ''}">${text}</span>`;
-
-  if (status === 'Cancelled' || status === 'No-show') {
-    return renderBadge(status);
-  }
-
+  const step = status === 'Completed' ? 3 : (isApproved ? 2 : 1);
   return `<div style="display:flex;align-items:center;gap:2px;white-space:nowrap;">
-    ${dot(step >= 1)}${label('Pending', step === 1 ? '#F59E0B' : '#64748B', step === 1)}
+    ${dot(step >= 1)}${label('Scheduled', step === 1 ? '#F59E0B' : '#64748B', step === 1)}
     ${line(step >= 2)}
     ${dot(step >= 2)}${label('Approved', step === 2 ? '#2563EB' : (step > 2 ? '#64748B' : '#CBD5E1'), step === 2)}
     ${line(step >= 3)}
@@ -519,7 +515,11 @@ function renderCalendar() {
   document.getElementById('calendar-grid').innerHTML = html;
 }
 
-let viewApprovedIds = new Set();
+let viewApprovedIds = new Set(JSON.parse(sessionStorage.getItem('approvedIds') || '[]'));
+
+function persistApproved() {
+  sessionStorage.setItem('approvedIds', JSON.stringify([...viewApprovedIds]));
+}
 
 function openViewModal(id) {
   const a = allAppointments.find(x => x.appointment_id === id);
@@ -541,36 +541,28 @@ function openViewModal(id) {
   const line1 = document.getElementById('vm-line-1');
   const line2 = document.getElementById('vm-line-2');
 
-  [dotPending, dotApproved, dotCompleted].forEach(d => { d.style.background = '#E2E8F0'; });
-  [line1, line2].forEach(l => { l.style.background = 'var(--border)'; });
-  document.getElementById('vm-step-pending').style.color = 'var(--text-muted)';
-  document.getElementById('vm-step-approved').style.color = 'var(--text-muted)';
-  document.getElementById('vm-step-completed').style.color = 'var(--text-muted)';
+  [dotPending, dotApproved, dotCompleted].forEach(d => { if (d) d.style.background = '#E2E8F0'; });
+  [line1, line2].forEach(l => { if (l) l.style.background = 'var(--border)'; });
+  ['vm-step-pending','vm-step-approved','vm-step-completed'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.color = 'var(--text-muted)'; el.style.fontWeight = ''; }
+  });
 
   if (status === 'Completed') {
-    dotPending.style.background = '#22C55E';
-    dotApproved.style.background = '#22C55E';
-    dotCompleted.style.background = '#22C55E';
-    line1.style.background = '#22C55E';
-    line2.style.background = '#22C55E';
-    document.getElementById('vm-step-pending').style.color = 'var(--text)';
-    document.getElementById('vm-step-approved').style.color = 'var(--text)';
-    document.getElementById('vm-step-completed').style.color = '#22C55E';
-    document.getElementById('vm-step-completed').style.fontWeight = '600';
+    [dotPending, dotApproved, dotCompleted].forEach(d => { if (d) d.style.background = '#22C55E'; });
+    [line1, line2].forEach(l => { if (l) l.style.background = '#22C55E'; });
+    const el = document.getElementById('vm-step-completed');
+    if (el) { el.style.color = '#22C55E'; el.style.fontWeight = '600'; }
   } else if (isApproved) {
-    dotPending.style.background = '#22C55E';
-    dotApproved.style.background = '#2563EB';
-    line1.style.background = '#22C55E';
-    document.getElementById('vm-step-pending').style.color = 'var(--text)';
-    document.getElementById('vm-step-approved').style.color = '#2563EB';
-    document.getElementById('vm-step-approved').style.fontWeight = '600';
+    if (dotPending)  dotPending.style.background  = '#22C55E';
+    if (dotApproved) dotApproved.style.background = '#2563EB';
+    if (line1)       line1.style.background       = '#22C55E';
+    const el = document.getElementById('vm-step-approved');
+    if (el) { el.style.color = '#2563EB'; el.style.fontWeight = '600'; }
   } else if (status === 'Scheduled') {
-    dotPending.style.background = '#F59E0B';
-    document.getElementById('vm-step-pending').style.color = '#F59E0B';
-    document.getElementById('vm-step-pending').style.fontWeight = '600';
-  } else {
-    dotPending.style.background = '#EF4444';
-    document.getElementById('vm-step-pending').style.color = '#EF4444';
+    if (dotPending) dotPending.style.background = '#F59E0B';
+    const el = document.getElementById('vm-step-pending');
+    if (el) { el.style.color = '#F59E0B'; el.style.fontWeight = '600'; }
   }
 
   const actionsEl = document.getElementById('vm-actions');
@@ -581,7 +573,12 @@ function openViewModal(id) {
       const approveBtn = document.createElement('button');
       approveBtn.className = 'btn btn-primary btn-sm';
       approveBtn.textContent = 'Approve for Consultation';
-      approveBtn.onclick = () => { viewApprovedIds.add(id); closeViewModal(); openViewModal(id); };
+      approveBtn.onclick = () => {
+        viewApprovedIds.add(id);
+        persistApproved();
+        closeViewModal();
+        openViewModal(id);
+      };
       actionsEl.appendChild(approveBtn);
     } else {
       const consultBtn = document.createElement('button');
@@ -592,14 +589,12 @@ function openViewModal(id) {
     }
   }
 
-  if (role === 'admin' || role === 'receptionist') {
-    if (status === 'Scheduled') {
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'btn btn-danger btn-sm';
-      cancelBtn.textContent = 'Cancel Appointment';
-      cancelBtn.onclick = () => { cancelAppointment(id); closeViewModal(); };
-      actionsEl.appendChild(cancelBtn);
-    }
+  if ((role === 'admin' || role === 'receptionist') && status === 'Scheduled') {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-danger btn-sm';
+    cancelBtn.textContent = 'Cancel Appointment';
+    cancelBtn.onclick = () => { cancelAppointment(id); closeViewModal(); };
+    actionsEl.appendChild(cancelBtn);
   }
 
   document.getElementById('view-modal').classList.add('open');

@@ -16,11 +16,12 @@ let currentPage = 1;
 const perPage = 10;
 
 // Fetch patients from the backend, optionally filtered by a search query
-async function loadPatients(searchQuery = '') {
+async function loadPatients(searchQuery = '', bustCache = false) {
   const container = document.getElementById('patients-list');
   try {
     let endpoint = '/api/patients';
     if (searchQuery) endpoint += `?search=${encodeURIComponent(searchQuery)}`;
+    if (bustCache) await idbCache.invalidate('/api/patients').catch(() => {});
     const response = await apiFetch(endpoint);
     allPatients = response.patients || [];
     filteredPatients = allPatients;
@@ -93,7 +94,6 @@ function renderTable() {
         <td>
           <div class="action-buttons">
             <button class="btn btn-small btn-primary" onclick="viewProfile('${patientId}')">View</button>
-            ${['admin','receptionist'].includes(currentRole) ? `<button class="btn btn-small btn-secondary" onclick="editPatient('${patientId}')">Edit</button>` : ''}
             ${invoiceBtn}
           </div>
         </td>
@@ -125,7 +125,6 @@ function nextPage() {
 
 // Navigate to the patient's full profile page
 function viewProfile(patientId) { location.href = `/patients/profile.html?id=${patientId}`; }
-function editPatient(patientId) { showToast('Edit feature coming soon', 'info'); }
 function goToInvoice(patientId) { location.href = `/patients/profile.html?id=${patientId}#billing`; }
 
 // Sort the patient list by a given column when the user clicks a table header
@@ -170,4 +169,4 @@ if (registerBtn && !['admin', 'receptionist'].includes(currentRole)) {
   registerBtn.style.display = 'none';
 }
 
-loadPatients();
+loadPatients('', true);
