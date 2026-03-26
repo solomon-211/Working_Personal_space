@@ -1,290 +1,378 @@
-# HealthHub Bridge — Clinic & Care Management System
+# HealthHub Bridge — Community Clinic Management System (CCMS)
 
-A web-based clinic management system built with Flask, MySQL, and vanilla HTML/CSS/JS.
-Designed to replace paper-based record keeping in medical facilities, covering patient
-registration, appointments, doctor consultations, medical visits, prescriptions, and billing.
+A web-based clinic management system built for community health facilities in South Sudan.
+It manages patients, doctors, appointments, medical visits, billing, and reporting through
+a Flask REST API backend and a plain HTML/CSS/JavaScript frontend.
 
 ---
 
-## Table of Contents
+## Project Structure
 
-1. [Prerequisites](#prerequisites)
-2. [Running the Project](#running-the-project)
-3. [User Roles & Permissions](#user-roles--permissions)
-4. [API Endpoints](#api-endpoints)
-5. [Key Business Rules](#key-business-rules)
-6. [Changelog](#changelog)
-   - [Database Changes](#database-changes)
-   - [Billing & Invoicing](#billing--invoicing)
-   - [Appointments](#appointments)
-   - [UI & Navigation](#ui--navigation)
-   - [Reports](#reports)
+```
+HealthHubBridge_Project/
+├── backend/
+│   ├── app.py                  # Flask application entry point
+│   ├── config.py               # DB config and get_db_connection()
+│   ├── cache.py                # In-memory TTL cache
+│   ├── requirements.txt        # Python dependencies
+│   ├── .env                    # Environment variables (not committed)
+│   └── routes/
+│       ├── auth.py             # Login, logout, session decorators
+│       ├── patients.py         # Patient CRUD
+│       ├── doctors.py          # Doctors and schedules
+│       ├── appointments.py     # Booking and status updates
+│       ├── medical_visits.py   # Visits, diagnoses, prescriptions
+│       ├── billing.py          # Invoices, payments, Paystack
+│       └── reports.py          # Dashboard stats, analytics, reports
+├── frontend/
+│   ├── assets/
+│   │   ├── css/style.css       # Global styles
+│   │   └── js/utils.js         # Shared utilities (apiFetch, idbCache, helpers)
+│   ├── auth/                   # Login page
+│   ├── dashboard/              # Admin/doctor dashboard
+│   ├── patients/               # Patient list, profile, registration
+│   ├── doctors/                # Doctor directory and schedules
+│   ├── appointments/           # Appointment booking and management
+│   ├── billing/                # Invoices and payments
+│   └── reports/                # Financial, clinical, operational reports
+└── db_setup/
+    ├── clinic_db.sql           # Database schema
+    └── test_data.sql           # Seed data for testing
+```
 
 ---
 
 ## Prerequisites
 
-| Tool | Version |
-|---|---|
-| Python | 3.10+ |
-| MySQL | 8.0+ |
-| VS Code + Live Server extension | Any |
+- Python 3.12+
+- MySQL 8.0 (service name: MySQL80)
+- A browser with a local server (e.g. VS Code Live Server on port 5500)
 
 ---
 
-## Running the Project
+## Setup
 
-**1 — Start MySQL** and connect:
-```bash
-mysql -u root -p
-```
+### 1. Database
 
-**2 — Set up the database** (run in order inside the MySQL prompt):
 ```sql
-SOURCE db_setup/clinic_db.sql;
-SOURCE db_setup/add_unique_invoice_appointment_index.sql;
-SOURCE db_setup/add_visit_id_to_invoices.sql;
-SOURCE db_setup/test_data.sql;
+-- Run in MySQL Workbench or terminal
+source db_setup/clinic_db.sql
+source db_setup/test_data.sql
 ```
-> Skip `test_data.sql` for a clean empty database.
 
-**3 — Install dependencies:**
+### 2. Backend environment
+
+Create `backend/.env`:
+
+```env
+SECRET_KEY=healthbridge-dev-secret-key
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=healthbridge_db
+```
+
+### 3. Install dependencies
+
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install flask flask-cors mysql-connector-python python-dotenv requests
 ```
 
-**4 — Configure backend** — create `backend/.env`:
-```env
-DB_PASSWORD=your_mysql_root_password
-SECRET_KEY=any-random-string
-```
+### 4. Run the backend
 
-**5 — Start the backend:**
 ```bash
+cd backend
 python app.py
 ```
-API runs at `http://localhost:5000`
 
-**6 — Serve the frontend** — open `frontend/` in VS Code, right-click `index.html` → **Open with Live Server** (must use port **5500**)
+Flask runs on `http://localhost:5000`.
 
-**7 — Log in** at `http://127.0.0.1:5500`:
+### 5. Run the frontend
+
+Open `frontend/` with VS Code Live Server or any static file server on port 5500.
+
+---
+
+## Test Accounts
 
 | Username | Password | Role |
 |---|---|---|
-| `admin` | `admin123` | Admin |
-| `doctor1` | `doctor123` | Doctor |
-| `receptionist1` | `recep123` | Receptionist |
+| `admin.juba` | `admin123` | Admin |
+| `amina.lado` | `amina123` | Receptionist |
+| `john.ladu` | `john123` | Receptionist |
+| `j.lual` | `doctor123` | Doctor |
+| `g.akuei` | `doctor123` | Doctor |
+
+Passwords are stored as SHA-256 hashes in the `users` table.
 
 ---
 
-## User Roles & Permissions
+## API Reference
+
+All routes are prefixed with `/api`. Protected routes require an active session cookie.
+
+### Authentication — `/api/auth`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/auth/login` | Public | Login with username and password |
+| POST | `/api/auth/logout` | Any | Clear session and log out |
+
+### Patients — `/api/patients`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/patients` | All | List all patients. Supports `?search=` query |
+| GET | `/api/patients/:id` | All | Get a single patient by ID |
+| POST | `/api/patients` | All | Register a new patient |
+| PATCH | `/api/patients/:id` | All | Update allowed fields (phone, email, blood_type, etc.) |
+
+The list endpoint returns two extra fields per patient via conditional aggregation:
+- `pending_invoice_count` — visits with no invoice yet
+- `invoiced_count` — visits that already have an invoice
+
+### Doctors — `/api/doctors`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/doctors` | All | List all active doctors |
+| GET | `/api/doctor-schedules` | All | All doctor weekly schedules |
+| GET | `/api/doctor-schedules/:doctor_id?date=` | All | Available slots for a doctor on a date |
+
+`start_time` values from MySQL `TIME` columns are serialized to strings to avoid
+`timedelta` JSON serialization errors.
+
+### Appointments — `/api/appointments`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/appointments` | All | List appointments. Supports `?doctor_id=`, `?status=`, `?date=`, `?patient_id=` |
+| GET | `/api/appointments/upcoming` | All | All future Scheduled appointments |
+| GET | `/api/appointments/week-summary` | All | 7-day appointment counts grouped by status |
+| POST | `/api/appointments` | All | Book a new appointment |
+| PATCH | `/api/appointments/:id` | All | Update status (Completed / Cancelled / No-show) |
+
+Booking validation:
+- Rejects past datetimes
+- Checks doctor works on that day of week
+- Blocks double-booking within 30 minutes
+
+Status transitions are enforced — only `Scheduled → Completed / Cancelled / No-show` is allowed.
+
+### Medical Visits — `/api/medical-visits`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/medical-visits/:patient_id` | All | All visits for a patient with diagnoses attached |
+| POST | `/api/medical-visits` | Admin, Doctor | Record a new visit |
+| GET | `/api/diagnoses/:visit_id` | All | Get diagnoses for a visit |
+| POST | `/api/diagnoses` | Admin, Doctor | Add a diagnosis to a visit |
+| GET | `/api/prescriptions/:patient_id` | All | All prescriptions for a patient |
+| POST | `/api/prescriptions` | Admin, Doctor | Add a prescription to a visit |
+
+The visits endpoint LEFT JOINs the `invoices` table so each visit row includes:
+- `has_invoice` (0 or 1)
+- `linked_invoice_id`
+
+### Billing — `/api/invoices`, `/api/payments`, `/api/paystack`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/invoices` | All | List invoices. Supports `?patient_id=`, `?status=` |
+| GET | `/api/invoices/:id` | All | Single invoice with line items |
+| POST | `/api/invoices` | Admin, Receptionist | Create invoice with line items |
+| POST | `/api/payments` | Admin, Receptionist | Record a payment against an invoice |
+| POST | `/api/paystack/initialize` | Admin, Receptionist | Initialize a Paystack transaction (returns access_code) |
+| GET | `/api/paystack/verify/:reference` | Admin, Receptionist | Verify a Paystack transaction before saving to DB |
+
+Payment status is automatically recalculated after each payment:
+- `total_paid >= amount_due` → `Paid`
+- `total_paid > 0` → `Partial`
+- `total_paid == 0` → `Unpaid`
+
+### Reports — `/api/reports`, `/api/dashboard`, `/api/analytics`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/dashboard/stats` | All | Today's patient count, appointments, revenue, unpaid invoices |
+| GET | `/api/analytics/weekly` | All | 7-day appointments and revenue trend |
+| GET | `/api/analytics/snapshots` | All | Pre-aggregated daily snapshots (up to 90 days) |
+| GET | `/api/reports/financial?from=&to=` | Admin | Revenue, payment methods, outstanding balances |
+| GET | `/api/reports/clinical?from=&to=` | Admin, Doctor | Top diagnoses and visit volume |
+| GET | `/api/reports/operational?from=&to=` | Admin | Appointment completion, cancellation, no-show, scheduled rates |
+
+---
+
+## Frontend Pages
+
+| Page | Path | Roles |
+|---|---|---|
+| Login | `/auth/login.html` | Public |
+| Dashboard | `/dashboard/index.html` | All |
+| Patient List | `/patients/list.html` | Admin, Receptionist, Doctor |
+| Patient Profile | `/patients/profile.html?id=` | All |
+| Register Patient | `/patients/register.html` | Admin, Receptionist |
+| Doctors | `/doctors/index.html` | Admin |
+| Appointments | `/appointments/index.html` | Admin, Receptionist, Doctor |
+| Billing | `/billing/index.html` | Admin, Receptionist |
+| Invoice Detail | `/billing/invoice.html?id=` | Admin, Receptionist |
+| Reports | `/reports/index.html` | Admin, Doctor |
+
+---
+
+## Key Features
+
+### Authentication and Sessions
+- SHA-256 password hashing
+- Server-side Flask sessions with 1-hour auto-expiry
+- `login_required` and `role_required` decorators on all protected routes
+- Frontend `authGuard()` redirects unauthenticated users to login
+
+### Role-Based Access Control
+Three roles with different permissions:
 
 | Feature | Admin | Receptionist | Doctor |
 |---|---|---|---|
 | View patients | ✅ | ✅ | ✅ |
-| Register / edit patients | ✅ | ✅ | ❌ |
-| Schedule / cancel appointments | ✅ | ✅ | ❌ |
-| Run consultations | ❌ | ❌ | ✅ |
+| Register patients | ✅ | ✅ | ❌ |
+| Manage doctors | ✅ | ❌ | ❌ |
 | Create invoices | ✅ | ✅ | ❌ |
 | Record payments | ✅ | ✅ | ❌ |
-| View reports | ✅ | ❌ | ✅ |
-| Manage doctors | ✅ | ❌ | ❌ |
+| View reports | ✅ | ❌ | ✅ (clinical only) |
+| Add diagnoses | ✅ | ❌ | ✅ |
+
+### In-Memory Backend Cache
+`cache.py` provides a simple TTL key-value store used across all GET endpoints.
+Cache is invalidated on every POST/PATCH so stale data is never served.
+
+| Cache key | TTL |
+|---|---|
+| `patients:*` | 30s |
+| `doctors:active` | 5 min |
+| `doctor-schedules:*` | 5 min |
+| `appointments:*` | 30s |
+| `invoices:*` | 30s |
+| `services:all` | 10 min |
+| `dashboard:stats:*` | 60s |
+| `analytics:weekly:*` | 5 min |
+
+### Frontend IndexedDB Cache (idbCache)
+`utils.js` includes an `idbCache` wrapper around the browser's IndexedDB API.
+It acts as a fallback cache — not a primary cache.
+
+Flow:
+1. `apiFetch()` calls the backend normally
+2. On success — response is silently written to IndexedDB keyed by endpoint URL
+3. On failure — `idbCache.get(endpoint)` is checked
+4. If found — a "Showing cached data" warning toast is shown and stale data is returned
+5. If not found — error toast is shown and the error is thrown
+
+Only GET requests are cached. POST/PATCH are never stored or served from cache.
+No TTL — cache holds the last known good response until overwritten by a new successful fetch.
+
+This allows clinic staff to continue viewing patient lists, appointments, and billing
+information during server downtime — critical given unreliable power supply in South Sudan.
+
+### Patient List Invoice Indicators
+The patient list shows invoice status buttons for admin and receptionist roles:
+- Amber **"Needs Invoice"** button — patient has visits with no invoice yet
+- Green **"Invoiced"** button — all visits have invoices
+- Both buttons navigate to the patient's profile billing tab
+
+Counts are calculated server-side using conditional aggregation in the SQL query —
+no extra API calls needed.
+
+### Patient Profile — Generate / View Invoice
+Each visit row in the Medical Visits tab shows an invoice action cell:
+- **"Generate Invoice"** — visit has no invoice, user is admin or receptionist
+- **"View Invoice"** — links directly to the invoice detail page
+- **"Pending Invoice"** — visit has no invoice, user is a doctor (read-only)
+
+After invoice creation, `loadVisits()` and `loadBilling()` are called in-place —
+the button updates to "View Invoice" without a page reload.
+
+### Paystack Payment Integration
+Card and Mobile Money payments go through Paystack's secure hosted popup.
+Cash and Insurance payments are recorded manually.
+
+**Card / Mobile flow:**
+1. Staff enters amount and patient email
+2. Frontend calls `POST /api/paystack/initialize` — Flask sends the secret key to Paystack server-side and returns an `access_code`
+3. Paystack popup opens — card or mobile details are entered inside Paystack's secure UI (never on your server)
+4. On payment success, Paystack calls the `callback` with a `reference`
+5. Frontend calls `GET /api/paystack/verify/:reference` — Flask confirms with Paystack's API that money actually moved
+6. Only after verification passes, `POST /api/payments` saves the payment to the database with the Paystack reference, card type, and last 4 digits
+
+The Paystack secret key (`sk_test_...`) lives only in the Flask backend and is never
+exposed to the browser. The public key (`pk_test_...`) is used only to open the popup.
+
+**Cash flow:** Staff enters amount and optional receipt reference → saved directly to DB.
+
+**Insurance flow:** Staff enters insurer name, claim number or reference, and optional
+authorization code → combined into a single reference string → saved to DB.
+At least one of reference number or claim number is required.
+
+### Operational Report Rates
+The operational report calculates four rates from appointment status counts:
+- Completion Rate — `Completed / total`
+- Cancellation Rate — `Cancelled / total`
+- No-show Rate — `No-show / total`
+- Scheduled Rate — `Scheduled / total`
 
 ---
 
-## API Endpoints
+## Environment Variables
 
-| Method | Endpoint | Description |
+| Variable | Default | Description |
 |---|---|---|
-| POST | `/api/auth/login` | Login |
-| POST | `/api/auth/logout` | Logout |
-| GET/POST | `/api/patients` | List / register patients |
-| GET/PATCH | `/api/patients/:id` | Get / update patient |
-| GET | `/api/doctors` | List active doctors |
-| GET | `/api/doctor-schedules` | List all doctor schedules |
-| GET | `/api/doctor-schedules/:id` | Get available slots for a doctor |
-| GET/POST | `/api/appointments` | List / book appointments |
-| PATCH | `/api/appointments/:id` | Update appointment status |
-| GET | `/api/appointments/upcoming` | List upcoming scheduled appointments |
-| GET/POST | `/api/medical-visits/:patient_id` | Get / create visit records |
-| POST | `/api/diagnoses` | Add diagnosis to visit |
-| GET/POST | `/api/prescriptions/:patient_id` | Get / add prescriptions |
-| GET/POST | `/api/invoices` | List / create invoices |
-| GET | `/api/invoices/:id` | Get invoice with payments |
-| POST | `/api/payments` | Record payment |
-| GET | `/api/reports/financial` | Financial report for a date range |
-| GET | `/api/reports/clinical` | Clinical report for a date range |
-| GET | `/api/reports/operational` | Operational report for a date range |
+| `SECRET_KEY` | `healthbridge-dev-secret-key` | Flask session signing key |
+| `DB_HOST` | `localhost` | MySQL host |
+| `DB_PORT` | `3306` | MySQL port |
+| `DB_USER` | `root` | MySQL username |
+| `DB_PASSWORD` | _(empty)_ | MySQL password |
+| `DB_NAME` | `healthbridge_db` | MySQL database name |
+| `SESSION_LIFETIME` | `3600` | Session expiry in seconds |
+| `CACHE_TTL` | `30` | Default cache TTL in seconds |
 
 ---
 
-## Key Business Rules
+## Database Schema Summary
 
-- **One visit = one invoice** — enforced by DB unique constraint and API 409 check.
-- **Invoice requires a completed consultation** — doctor must submit the consultation form first.
-- **Only admin/receptionist can create invoices** — doctors can view but not bill.
-- **Payments cannot exceed the remaining balance.**
-- **Non-cash payments require a reference** — card last 4, mobile transaction ID, or insurance claim number.
-- **Past scheduled appointments auto-expire to No-show** — any appointment whose date passes without being actioned is automatically marked as No-show when the dashboard loads.
-- **Sessions expire after 1 hour** of inactivity.
-
----
-
-## Changelog
-
-### Database Changes
-
-#### 1. `visit_id` column added to invoices table
-The original invoices table only linked to appointments, which broke for walk-in patients
-with no appointment. A `visit_id` column with a `UNIQUE` constraint was added to `invoices`,
-giving every invoice a direct, duplicate-proof link to its visit.
-
-Files changed:
-- `db_setup/clinic_db.sql` — added `visit_id` column, unique key, and FK to `medical_visits`
-- `db_setup/add_visit_id_to_invoices.sql` — migration script for existing databases
-
-#### 2. Legacy invoice backfill
-After adding `visit_id`, all pre-migration invoices had `visit_id = NULL`, causing visits
-with existing invoices to still show "Generate Invoice". Each invoice was matched to its
-visit by `appointment_id` or by date/patient and updated with the correct `visit_id`.
-Unmatched orphan duplicates were left as NULL.
-
-Files changed:
-- `db_setup/add_visit_id_to_invoices.sql` — backfill UPDATE statements matching invoices to visits
-
-#### 3. test_data.sql invoices INSERT fixed for updated schema
-After the `visit_id` column was added to the `invoices` table, the `test_data.sql` INSERT
-statement still used positional column values without naming the columns. This caused values
-to land in the wrong columns — `visit_id` received the `appointment_id` value and
-`appointment_id` received the `invoice_date` value — breaking invoice lookups and the
-LEFT JOIN in the appointments query. The INSERT was updated to use explicit column names.
-
-Files changed:
-- `db_setup/test_data.sql` — changed `INSERT INTO invoices VALUES` to `INSERT INTO invoices (invoice_id, patient_id, visit_id, appointment_id, ...)` with explicit column names
+| Table | Description |
+|---|---|
+| `users` | Login accounts with role (admin, doctor, receptionist) |
+| `patients` | Patient demographics and medical info |
+| `doctors` | Clinician profiles and active status |
+| `doctor_schedule` | Weekly shift slots per doctor |
+| `appointments` | Scheduled visits between patient and doctor |
+| `medical_visits` | Actual visit records linked to appointments |
+| `diagnoses` | Diagnoses attached to a visit |
+| `prescriptions` | Medications prescribed during a visit |
+| `services` | Billable service catalogue with unit prices |
+| `invoices` | Invoice headers with payment status |
+| `invoice_items` | Line items linking invoices to services |
+| `payments` | Payment records against invoices |
+| `analytics_snapshots` | Pre-aggregated daily metrics |
+| `reports` | Saved report metadata |
 
 ---
 
-### Billing & Invoicing
+## Dependencies
 
-#### 4. Duplicate invoice prevention
-The backend had no guard against creating two invoices for the same visit. `create_invoice()`
-now requires `visit_id`, queries for an existing invoice before inserting, and returns
-HTTP 409 if one is found. The database unique constraint acts as a second safety net for
-race conditions.
+### Backend
+| Package | Version | Purpose |
+|---|---|---|
+| `flask` | 3.0.3 | Web framework |
+| `flask-cors` | 4.0.1 | Cross-origin requests from frontend |
+| `mysql-connector-python` | 8.3.0 | MySQL database driver |
+| `python-dotenv` | latest | Load `.env` file |
+| `requests` | latest | HTTP calls to Paystack API |
 
-Files changed:
-- `backend/routes/billing.py` — added pre-insert duplicate check and `IntegrityError` catch
+### Frontend
+| Library | Source | Purpose |
+|---|---|---|
+| Paystack Inline JS | `https://js.paystack.co/v1/inline.js` | Payment popup |
 
-#### 5. Invoice status on the Medical Visits tab
-The visits tab showed a "Generate Invoice" button on every row regardless of whether an
-invoice existed. The visits query now LEFT JOINs invoices on `visit_id`, returning
-`has_invoice` and `linked_invoice_id` per visit. The button now shows "View Invoice",
-"Generate Invoice", or "Pending Invoice" based on status and role.
-
-Files changed:
-- `backend/routes/medical_visits.py` — added LEFT JOIN on `visit_id` to visits query
-- `frontend/patients/profile.js` — added `renderVisitInvoiceCell()` function
-
-#### 6. No page redirect after invoice creation
-After creating an invoice, the page redirected away, and returning via the back button
-showed stale cached data with the wrong button state. `submitInvoice()` now stays on the
-page and calls `loadVisits()` + `loadBilling()` in place. A toast confirms success.
-
-Files changed:
-- `frontend/patients/profile.js` — removed redirect from `submitInvoice()`, added in-place tab reload
-
-#### 7. Cache invalidation after invoice creation
-Only the `invoices` cache was cleared after creation, leaving `medical-visits` and `patients`
-caches stale for up to 30 seconds. Three caches are now invalidated together so all parts
-of the UI reflect the new state immediately.
-
-Files changed:
-- `backend/routes/billing.py` — added `cache_invalidate('medical-visits:{patient_id}')` and `cache_invalidate('patients:')`
-
-#### 8. Billing status on the patient list
-There was no way to see which patients needed an invoice without opening each profile
-individually. The patients query now returns `pending_invoice_count` and `invoiced_count`
-via conditional aggregation. The list shows an amber "Needs Invoice" or green "Invoiced"
-button for admin/receptionist.
-
-Files changed:
-- `backend/routes/patients.py` — added `pending_invoice_count` and `invoiced_count` to patients query
-- `frontend/patients/list.js` — updated `renderTable()` to show billing status buttons
-
-#### 9. Billing actions on the appointments page
-After a doctor completed a consultation, admin/receptionist had to navigate away from
-appointments, find the patient, and locate the visit manually. The appointment view modal
-now shows "Generate Invoice" or "View Invoice" for completed appointments.
-
-Files changed:
-- `frontend/appointments/appointments.js` — updated `openViewModal()` to render billing buttons for admin/receptionist
-
----
-
-### Appointments
-
-#### 10. Upcoming appointments filter changed from NOW() to CURDATE()
-The dashboard was excluding same-day appointments that had already passed the current hour.
-For example, an appointment at 09:00 would disappear from the upcoming list by 09:01 even
-though the patient had not yet been seen. The filter was changed so all appointments on
-today's date remain visible regardless of the current time.
-
-Files changed:
-- `backend/routes/appointments.py` — changed `>= NOW()` to `DATE(appointment_datetime) >= CURDATE()` in `get_upcoming_appointments()`
-
-#### 11. Auto-expiry of past scheduled appointments
-Appointments whose date passed without being completed, cancelled, or marked as no-show
-remained in `Scheduled` status indefinitely. This caused the upcoming count on the dashboard
-to be inaccurate — stale scheduled appointments from past dates were silently excluded by
-the date filter but never cleaned up. The upcoming endpoint now runs an UPDATE before the
-SELECT to auto-mark any `Scheduled` appointment with a past date as `No-show`, then
-invalidates the appointments cache so the change is immediately reflected across the UI.
-
-Files changed:
-- `backend/routes/appointments.py` — added auto-expiry UPDATE in `get_upcoming_appointments()` before the SELECT, followed by `cache_invalidate('appointments')`
-
----
-
-### UI & Navigation
-
-#### 12. Auto-open Medical Visits tab via URL hash
-Navigation from the patient list and appointments page needed to land on the Medical Visits
-tab automatically. Profile pages now check `window.location.hash === '#billing'` on load
-and click the tab programmatically.
-
-Files changed:
-- `frontend/patients/profile.js` — added hash check and auto-tab click on page load
-- `frontend/patients/list.js` — `goToInvoice()` navigates with `#billing` hash
-- `frontend/appointments/appointments.js` — "Generate Invoice" button navigates with `#billing` hash
-
-#### 13. Edit button removed from patient list
-The Edit button on the patient list showed a "coming soon" toast and served no purpose.
-Patient editing exists on the profile page. The button was removed to reduce clutter.
-
-Files changed:
-- `frontend/patients/list.js` — removed Edit button from `renderTable()`
-
-#### 14. Favicon added to all pages
-Every page load triggered a `404` error in the browser console because no favicon existed.
-An inline SVG data URI favicon (blue square, "HB" initials) was added to all 11 HTML files,
-eliminating the 404 with no extra files needed.
-
-Files changed:
-- All 11 HTML files — added `<link rel="icon">` with inline SVG data URI to each `<head>`
-
----
-
-### Reports
-
-#### 15. No-show rate added to operational report
-The operational report summary cards showed Completion Rate, Cancellation Rate, and
-Scheduled Rate but had no visibility into how many appointments resulted in a no-show.
-Since no-shows are a key operational metric for a clinic — indicating patients who booked
-but did not attend — the No-show Rate was added as a dedicated summary card. The backend
-calculates it the same way as the other rates, and the frontend renders it between
-Cancellation Rate and Scheduled Rate.
-
-Files changed:
-- `backend/routes/reports.py` — added `no_show_rate` calculation and included it in the operational report response
-- `frontend/reports/reports.js` — added `no_show_rate` to `reportData` parsing and added `No-show Rate` card in `renderSummaryCards()`
+No other frontend frameworks or build tools — plain HTML, CSS, and JavaScript only.

@@ -161,7 +161,7 @@ function renderStatusTracker(status, isApproved) {
   const line = (active) => `<span style="display:inline-block;width:18px;height:2px;background:${active ? '#22C55E' : '#E2E8F0'};vertical-align:middle;margin:0 2px;"></span>`;
   const label = (text, color, bold) => `<span style="font-size:11px;color:${color};${bold ? 'font-weight:600;' : ''}">${text}</span>`;
 
-  if (status === 'Cancelled') {
+  if (status === 'Cancelled' || status === 'No-show') {
     return renderBadge(status);
   }
 
@@ -599,23 +599,6 @@ function openViewModal(id) {
       cancelBtn.textContent = 'Cancel Appointment';
       cancelBtn.onclick = () => { cancelAppointment(id); closeViewModal(); };
       actionsEl.appendChild(cancelBtn);
-    }
-    if (status === 'Completed' && !Number(a.has_invoice)) {
-      const invBtn = document.createElement('button');
-      invBtn.className = 'btn btn-primary btn-sm';
-      invBtn.textContent = 'Generate Invoice';
-      invBtn.onclick = () => {
-        closeViewModal();
-        location.href = `/patients/profile.html?id=${a.patient_id}#billing`;
-      };
-      actionsEl.appendChild(invBtn);
-    }
-    if (status === 'Completed' && Number(a.has_invoice)) {
-      const viewInvBtn = document.createElement('button');
-      viewInvBtn.className = 'btn btn-outline btn-sm';
-      viewInvBtn.textContent = 'View Invoice';
-      viewInvBtn.onclick = () => { location.href = `/billing/invoice.html?id=${a.linked_invoice_id}`; };
-      actionsEl.appendChild(viewInvBtn);
     }
   }
 

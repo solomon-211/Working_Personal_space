@@ -1,3 +1,5 @@
+const PAYSTACK_KEY = 'pk_test_3455a2b37d2f3525e62e5d89a0faa783b23d7c55';
+
 // Make sure the user is logged in before anything else runs
 authGuard();
 checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
@@ -14,155 +16,6 @@ if (!invoiceId) location.href = '/billing/index.html';
 
 // We'll store the loaded invoice here so other functions can reference it
 let invoiceData = null;
-
-function clearPaymentError() {
-  const errorEl = document.getElementById('payment-error');
-  if (!errorEl) return;
-  errorEl.style.display = 'none';
-  errorEl.textContent = '';
-}
-
-function showPaymentError(message) {
-  const errorEl = document.getElementById('payment-error');
-  if (!errorEl) {
-    showToast(message, 'error');
-    return;
-  }
-  errorEl.textContent = message;
-  errorEl.style.display = 'block';
-}
-
-function renderPaymentExtraFields(method) {
-  const container = document.getElementById('payment-extra-fields');
-  if (!container) return;
-
-  if (method === 'Card') {
-    container.innerHTML = `
-      <div class="payment-extra-grid">
-        <div class="form-group">
-          <label class="form-label">Card Network</label>
-          <input type="text" id="pay-card-network" class="form-control" placeholder="Visa, Mastercard...">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Card Last 4 Digits</label>
-          <input type="text" id="pay-card-last4" class="form-control" maxlength="4" placeholder="1234">
-        </div>
-        <div class="form-group full-span">
-          <label class="form-label">Authorization Code</label>
-          <input type="text" id="pay-card-auth" class="form-control" placeholder="Bank authorization code">
-        </div>
-      </div>`;
-    return;
-  }
-
-  if (method === 'Mobile') {
-    container.innerHTML = `
-      <div class="payment-extra-grid">
-        <div class="form-group">
-          <label class="form-label">Mobile Provider</label>
-          <input type="text" id="pay-mobile-provider" class="form-control" placeholder="e.g. MTN, Zain">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Mobile Number</label>
-          <input type="text" id="pay-mobile-number" class="form-control" placeholder="+211...">
-        </div>
-        <div class="form-group full-span">
-          <label class="form-label">Transaction ID</label>
-          <input type="text" id="pay-mobile-txn" class="form-control" placeholder="Required if no reference number">
-        </div>
-      </div>`;
-    return;
-  }
-
-  if (method === 'Insurance') {
-    container.innerHTML = `
-      <div class="payment-extra-grid">
-        <div class="form-group">
-          <label class="form-label">Insurer Name</label>
-          <input type="text" id="pay-insurer" class="form-control" placeholder="Insurance provider">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Claim Number</label>
-          <input type="text" id="pay-claim-no" class="form-control" placeholder="Required if no reference number">
-        </div>
-        <div class="form-group full-span">
-          <label class="form-label">Authorization Code</label>
-          <input type="text" id="pay-ins-auth" class="form-control" placeholder="Optional pre-auth code">
-        </div>
-      </div>`;
-    return;
-  }
-
-  container.innerHTML = '';
-}
-
-function renderPaymentHistory(payments) {
-  const paymentsSection = document.getElementById('payments-list');
-  if (!paymentsSection) return;
-
-  if (!payments || payments.length === 0) {
-    paymentsSection.innerHTML = '<p class="payment-empty">No payments recorded yet.</p>';
-    return;
-  }
-
-  paymentsSection.innerHTML = payments.map(p => `
-    <div class="payment-item">
-      <div>
-        <div class="payment-label">Date</div>
-        <div>${formatDate(p.payment_date)}</div>
-      </div>
-      <div>
-        <div class="payment-label">Method</div>
-        <div>${p.payment_method || '—'}</div>
-      </div>
-      <div>
-        <div class="payment-label">Amount</div>
-        <div>${formatCurrency(p.amount_paid)}</div>
-      </div>
-      <div>
-        <div class="payment-label">Received By</div>
-        <div>${p.received_by || '—'}</div>
-      </div>
-      <div>
-        <div class="payment-label">Reference</div>
-        <div>${p.reference_no || '—'}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function buildMethodPayload(method, referenceNo) {
-  const payload = {};
-
-  if (method === 'Card') {
-    payload.card_network = document.getElementById('pay-card-network')?.value.trim() || '';
-    payload.card_last4 = document.getElementById('pay-card-last4')?.value.trim() || '';
-    payload.card_auth_code = document.getElementById('pay-card-auth')?.value.trim() || '';
-    if (!referenceNo && !payload.card_last4 && !payload.card_auth_code) {
-      throw new Error('Card payment needs card last 4 digits or authorization code (or reference number).');
-    }
-  }
-
-  if (method === 'Mobile') {
-    payload.mobile_provider = document.getElementById('pay-mobile-provider')?.value.trim() || '';
-    payload.mobile_number = document.getElementById('pay-mobile-number')?.value.trim() || '';
-    payload.mobile_txn_id = document.getElementById('pay-mobile-txn')?.value.trim() || '';
-    if (!referenceNo && !payload.mobile_txn_id) {
-      throw new Error('Mobile payment needs a transaction ID (or reference number).');
-    }
-  }
-
-  if (method === 'Insurance') {
-    payload.insurer_name = document.getElementById('pay-insurer')?.value.trim() || '';
-    payload.insurance_claim_no = document.getElementById('pay-claim-no')?.value.trim() || '';
-    payload.insurance_auth_code = document.getElementById('pay-ins-auth')?.value.trim() || '';
-    if (!referenceNo && !payload.insurance_claim_no) {
-      throw new Error('Insurance payment needs a claim number (or reference number).');
-    }
-  }
-
-  return payload;
-}
 
 async function loadInvoice() {
   try {
@@ -184,10 +37,10 @@ function renderInvoice() {
   document.getElementById('invoice-date').textContent    = formatDate(inv.invoice_date);
   document.getElementById('invoice-status').outerHTML    = `<span id="invoice-status">${renderBadge(inv.payment_status)}</span>`;
   document.getElementById('invoice-total').textContent   = formatCurrency(inv.total_amount);
-  document.getElementById('invoice-due').textContent     = formatCurrency(inv.remaining_balance ?? inv.amount_due);
+  document.getElementById('invoice-due').textContent     = formatCurrency(inv.amount_due);
   document.getElementById('subtotal').textContent        = formatCurrency(inv.total_amount);
   document.getElementById('discount-display').textContent = formatCurrency(inv.discount || 0);
-  document.getElementById('amount-due').textContent      = formatCurrency(inv.remaining_balance ?? inv.amount_due);
+  document.getElementById('amount-due').textContent      = formatCurrency(inv.amount_due);
   document.title = `INV-${String(inv.invoice_id).padStart(4,'0')} — CCMS`;
 
   // Only show the "Add Payment" button if the invoice hasn't been fully paid yet
@@ -196,7 +49,11 @@ function renderInvoice() {
   }
 
   renderServices(inv.items || []);
-  renderPaymentHistory(inv.payments || []);
+
+  // The GET /api/invoices/:id endpoint doesn't return payment history,
+  // so we just show a placeholder message in that section
+  const paymentsSection = document.getElementById('payments-list');
+  if (paymentsSection) paymentsSection.innerHTML = '<p class="payment-empty">Payment history not available on this view.</p>';
 }
 
 function renderServices(items) {
@@ -218,46 +75,90 @@ function renderServices(items) {
 }
 
 function openPaymentModal() {
-  clearPaymentError();
-  // Clear out any previous values before showing the modal
-  document.getElementById('pay-amount').value = '';
-  document.getElementById('pay-method').value = 'Cash';
-  document.getElementById('pay-ref').value    = '';
-  renderPaymentExtraFields('Cash');
-
-  const remaining = invoiceData?.remaining_balance ?? invoiceData?.amount_due;
-  const remainingEl = document.getElementById('pay-remaining');
-  if (remainingEl) {
-    remainingEl.textContent = remaining === undefined || remaining === null
-      ? 'Remaining: —'
-      : `Remaining: ${formatCurrency(remaining)}`;
-  }
-
+  document.getElementById('pay-amount-due').value = invoiceData?.amount_due || 0;
+  document.getElementById('pay-amount').value     = invoiceData?.amount_due || '';
+  document.getElementById('pay-method').value     = 'Cash';
+  ['cash-ref', 'card-email', 'card-network', 'card-last4', 'card-auth',
+   'mobile-email', 'mobile-provider', 'mobile-number', 'mobile-txn',
+   'ins-ref', 'ins-name', 'ins-claim', 'ins-auth'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const due = invoiceData?.amount_due || 0;
+  document.getElementById('pay-remaining-hint').textContent = due ? `Remaining: ${formatCurrency(due)}` : '';
+  onMethodChange();
   showModal('payment-modal');
 }
 
+function onMethodChange() {
+  const method = document.getElementById('pay-method').value;
+  ['Cash', 'Card', 'Mobile', 'Insurance'].forEach(m => {
+    document.getElementById(`fields-${m}`).style.display = m === method ? '' : 'none';
+  });
+  const isPaystack = method === 'Card' || method === 'Mobile';
+  document.getElementById('pay-submit-btn').textContent = isPaystack ? 'Pay with Paystack' : 'Record Payment';
+}
+
 async function submitPayment() {
-  clearPaymentError();
   const amount = parseFloat(document.getElementById('pay-amount').value);
   const method = document.getElementById('pay-method').value;
-  const ref    = document.getElementById('pay-ref').value.trim();
 
-  if (!amount || amount <= 0) { showPaymentError('Enter a valid amount.'); return; }
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
 
-  const remaining = Number(invoiceData?.remaining_balance ?? invoiceData?.amount_due);
-  if (!Number.isNaN(remaining) && amount > remaining) {
-    showPaymentError(`Amount exceeds remaining balance (${formatCurrency(remaining)}).`);
-    return;
+  if (method === 'Card') {
+    const email = document.getElementById('card-email').value.trim();
+    if (!email) { showToast('Patient email is required for card payment', 'error'); return; }
+    launchPaystack(amount, 'Card', email, ['card']);
+  } else if (method === 'Mobile') {
+    const email = document.getElementById('mobile-email').value.trim();
+    if (!email) { showToast('Patient email is required for mobile payment', 'error'); return; }
+    launchPaystack(amount, 'Mobile', email, ['mobile_money']);
+  } else if (method === 'Cash') {
+    const ref = document.getElementById('cash-ref').value.trim();
+    await recordPayment(amount, 'Cash', ref);
+  } else if (method === 'Insurance') {
+    const ref   = document.getElementById('ins-ref').value.trim();
+    const claim = document.getElementById('ins-claim').value.trim();
+    if (!ref && !claim) { showToast('Enter a reference number or claim number', 'error'); return; }
+    const combined = [
+      document.getElementById('ins-name').value.trim(),
+      ref || claim,
+      document.getElementById('ins-auth').value.trim()
+    ].filter(Boolean).join(' | ');
+    await recordPayment(amount, 'Insurance', combined);
   }
+}
 
-  let methodPayload = {};
-  try {
-    methodPayload = buildMethodPayload(method, ref);
-  } catch (e) {
-    showPaymentError(e.message || 'Fill in required payment details.');
-    return;
-  }
+function launchPaystack(amount, method, email, channels) {
+  const handler = PaystackPop.setup({
+    key:      PAYSTACK_KEY,
+    email:    email,
+    amount:   Math.round(amount * 100),
+    currency: 'GHS',
+    ref:      `INV-${invoiceId}-${Date.now()}`,
+    channels: channels,
+    metadata: { invoice_id: invoiceId },
+    callback: async function(response) {
+      let ref = response.reference;
+      if (method === 'Card') {
+        const network = document.getElementById('card-network').value.trim();
+        const last4   = document.getElementById('card-last4').value.trim();
+        if (network || last4) ref += ` | ${network} ${last4}`.trim();
+      } else if (method === 'Mobile') {
+        const provider = document.getElementById('mobile-provider').value.trim();
+        const number   = document.getElementById('mobile-number').value.trim();
+        if (provider || number) ref += ` | ${provider} ${number}`.trim();
+      }
+      await recordPayment(amount, method, ref);
+    },
+    onClose: function() {
+      showToast('Payment cancelled', 'warning');
+    }
+  });
+  handler.openIframe();
+}
 
+async function recordPayment(amount, method, ref) {
   try {
     await apiFetch('/api/payments', {
       method: 'POST',
@@ -266,23 +167,16 @@ async function submitPayment() {
         amount_paid:    amount,
         payment_method: method,
         payment_date:   new Date().toISOString().split('T')[0],
-        reference_no:   ref,
-        received_by:    sessionStorage.getItem('name') || '',
-        ...methodPayload
+        reference_no:   ref || '',
+        received_by:    sessionStorage.getItem('name') || ''
       })
     });
     hideModal('payment-modal');
     showToast('Payment recorded', 'success');
-    // Reload the invoice so the status and due amount update
     loadInvoice();
   } catch (e) {
-    showPaymentError(e.message || 'Failed to record payment');
+    showToast(e.message || 'Failed to record payment', 'error');
   }
 }
-
-document.getElementById('pay-method').addEventListener('change', (e) => {
-  clearPaymentError();
-  renderPaymentExtraFields(e.target.value);
-});
 
 loadInvoice();

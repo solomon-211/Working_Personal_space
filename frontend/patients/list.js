@@ -70,11 +70,17 @@ function renderTable() {
       </thead>
       <tbody>`;
 
+  const isAdminOrRec = ['admin', 'receptionist'].includes(currentRole);
+
   paginated.items.forEach(patient => {
     const patientId    = patient.patient_id || patient.id;
-    const isAdminOrRec  = ['admin','receptionist'].includes(currentRole);
-    const needsInvoice  = isAdminOrRec && (patient.pending_invoice_count || 0) > 0;
-    const hasInvoiced   = isAdminOrRec && (patient.invoiced_count || 0) > 0;
+    const needsInvoice = isAdminOrRec && (patient.pending_invoice_count || 0) > 0;
+    const hasInvoiced  = isAdminOrRec && (patient.invoiced_count || 0) > 0;
+    const invoiceBtn   = needsInvoice
+      ? `<button class="btn btn-small btn-warning" onclick="goToInvoice('${patientId}')">Needs Invoice</button>`
+      : hasInvoiced
+        ? `<button class="btn btn-small btn-success" onclick="goToInvoice('${patientId}')">Invoiced</button>`
+        : '';
     html += `
       <tr>
         <td><strong>${patient.clinic_number}</strong></td>
@@ -87,8 +93,8 @@ function renderTable() {
         <td>
           <div class="action-buttons">
             <button class="btn btn-small btn-primary" onclick="viewProfile('${patientId}')">View</button>
-            ${needsInvoice  ? `<button class="btn btn-small" onclick="goToInvoice('${patientId}')" style="background:#F59E0B;border-color:#F59E0B;color:#fff;">Needs Invoice</button>` : ''}
-            ${!needsInvoice && hasInvoiced ? `<button class="btn btn-small" onclick="goToInvoice('${patientId}')" style="background:#22C55E;border-color:#22C55E;color:#fff;">Invoiced</button>` : ''}
+            ${['admin','receptionist'].includes(currentRole) ? `<button class="btn btn-small btn-secondary" onclick="editPatient('${patientId}')">Edit</button>` : ''}
+            ${invoiceBtn}
           </div>
         </td>
       </tr>`;
@@ -119,8 +125,8 @@ function nextPage() {
 
 // Navigate to the patient's full profile page
 function viewProfile(patientId) { location.href = `/patients/profile.html?id=${patientId}`; }
-function goToInvoice(patientId)  { location.href = `/patients/profile.html?id=${patientId}#billing`; }
 function editPatient(patientId) { showToast('Edit feature coming soon', 'info'); }
+function goToInvoice(patientId) { location.href = `/patients/profile.html?id=${patientId}#billing`; }
 
 // Sort the patient list by a given column when the user clicks a table header
 function sortTable(column) {

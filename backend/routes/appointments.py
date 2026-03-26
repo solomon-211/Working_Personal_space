@@ -13,11 +13,10 @@ appointments_bp = Blueprint('appointments', __name__)
 def get_appointments():
     # Optional filters from query string: ?doctor_id=1&status=Scheduled&date=2025-06-10
     doctor_id = request.args.get('doctor_id')
-    patient_id = request.args.get('patient_id')
     status    = request.args.get('status')
     appt_date = request.args.get('date')
 
-    cache_key = f'appointments:{doctor_id}:{patient_id}:{status}:{appt_date}'
+    cache_key = f'appointments:{doctor_id}:{status}:{appt_date}'
     cached = cache_get(cache_key)
     if cached:
         return jsonify({'appointments': cached, 'source': 'cache'}), 200
@@ -27,13 +26,10 @@ def get_appointments():
         SELECT a.appointment_id, a.appointment_datetime, a.reason, a.status,
                a.patient_id, a.doctor_id,
                p.first_name, p.last_name, p.clinic_number,
-               d.full_name AS doctor_name,
-               i.invoice_id AS linked_invoice_id,
-               CASE WHEN i.invoice_id IS NULL THEN 0 ELSE 1 END AS has_invoice
+               d.full_name AS doctor_name
         FROM appointments a
         JOIN patients p ON a.patient_id = p.patient_id
         JOIN doctors  d ON a.doctor_id  = d.doctor_id
-        LEFT JOIN invoices i ON i.appointment_id = a.appointment_id
         WHERE 1=1
     """
     params = []
@@ -41,9 +37,6 @@ def get_appointments():
     if doctor_id:
         query += " AND a.doctor_id = %s"
         params.append(doctor_id)
-    if patient_id:
-        query += " AND a.patient_id = %s"
-        params.append(patient_id)
     if status:
         query += " AND a.status = %s"
         params.append(status)
@@ -100,6 +93,8 @@ def week_summary():
     cache_set(cache_key, summary, ttl=120)
     return jsonify({'summary': summary, 'source': 'db'}), 200
 
+
+
 @appointments_bp.route('/appointments/upcoming', methods=['GET'])
 @login_required
 def get_upcoming_appointments():
@@ -107,20 +102,10 @@ def get_upcoming_appointments():
     cached = cache_get(cache_key)
     if cached:
         return jsonify({'appointments': cached, 'source': 'cache'}), 200
-
+ 
     try:
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # Auto-mark past scheduled appointments as No-show
-        cursor.execute("""
-            UPDATE appointments
-            SET status = 'No-show'
-            WHERE status = 'Scheduled'
-              AND DATE(appointment_datetime) < CURDATE()
-        """)
-        conn.commit()
-
         cursor.execute("""
             SELECT a.appointment_id, a.appointment_datetime, a.reason, a.status,
                    a.patient_id, a.doctor_id,
@@ -130,15 +115,14 @@ def get_upcoming_appointments():
             JOIN patients p ON a.patient_id = p.patient_id
             JOIN doctors  d ON a.doctor_id  = d.doctor_id
             WHERE a.status = 'Scheduled'
-              AND DATE(a.appointment_datetime) >= CURDATE()
+              AND a.appointment_datetime >= NOW()
             ORDER BY a.appointment_datetime
         """)
         appointments = cursor.fetchall()
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not retrieve upcoming appointments.', 'details': str(e)}), 503
-
-    cache_invalidate('appointments')
+ 
     cache_set(cache_key, appointments, ttl=60)
     return jsonify({'appointments': appointments, 'source': 'db'}), 200
 
@@ -190,7 +174,7 @@ def book_appointment():
         cursor.execute("""
             SELECT appointment_id FROM appointments
             WHERE doctor_id = %s
-              AND status    = 'Scheduled'
+              AND a.status    = 'Scheduled'
               AND ABS(TIMESTAMPDIFF(MINUTE, appointment_datetime, %s)) < 30
         """, (data['doctor_id'], data['appointment_datetime']))
         if cursor.fetchone():

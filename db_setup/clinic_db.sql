@@ -106,17 +106,13 @@ CREATE TABLE `services` (
 CREATE TABLE `invoices` (
   `invoice_id` INT AUTO_INCREMENT PRIMARY KEY,
   `patient_id` INT NOT NULL,
-  `visit_id` INT,
   `appointment_id` INT,
   `invoice_date` DATE NOT NULL,
   `total_amount` DECIMAL(10,2) DEFAULT 0.00,
   `discount` DECIMAL(10,2) DEFAULT 0.00,
   `amount_due` DECIMAL(10,2) DEFAULT 0.00,
   `payment_status` ENUM('Unpaid','Partial','Paid'),
-  UNIQUE KEY `uq_invoices_visit_id` (`visit_id`),
-  UNIQUE KEY `uq_invoices_appointment_id` (`appointment_id`),
   FOREIGN KEY (`patient_id`) REFERENCES `patients`(`patient_id`),
-  FOREIGN KEY (`visit_id`) REFERENCES `medical_visits`(`visit_id`),
   FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`appointment_id`)
 );
 

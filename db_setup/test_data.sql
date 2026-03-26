@@ -68,12 +68,12 @@ INSERT INTO `services` VALUES
 (5, 'ORS Administration',   'Oral rehydration therapy for dehydration cases',  150.00,  'Procedures');
 
 -- invoices
-INSERT INTO `invoices` (invoice_id, patient_id, visit_id, appointment_id, invoice_date, total_amount, discount, amount_due, payment_status) VALUES
-(1, 1, 1, 1, '2025-06-10', 800.00,  0.00,   800.00,  'Paid'),
-(2, 2, 2, 2, '2025-06-11', 350.00,  0.00,   350.00,  'Paid'),
-(3, 3, 3, 3, '2025-06-12', 500.00,  50.00,  450.00,  'Paid'),
-(4, 4, 4, 4, '2025-06-13', 400.00,  0.00,   400.00,  'Unpaid'),
-(5, 2, 5, NULL,'2025-06-14', 650.00, 0.00,   650.00,  'Partial');
+INSERT INTO `invoices` VALUES
+(1, 1, 1, '2025-06-10', 800.00,  0.00,   800.00,  'Paid'),
+(2, 2, 2, '2025-06-11', 350.00,  0.00,   350.00,  'Paid'),
+(3, 3, 3, '2025-06-12', 500.00,  50.00,  450.00,  'Paid'),
+(4, 4, 4, '2025-06-13', 400.00,  0.00,   400.00,  'Unpaid'),
+(5, 2, NULL,'2025-06-14', 650.00, 0.00,   650.00,  'Partial');
 
 -- invoice_items
 INSERT INTO `invoice_items` VALUES
@@ -93,11 +93,11 @@ INSERT INTO `payments` VALUES
 
 -- users
 INSERT INTO `users` VALUES
-(1, 'admin.juba',    'e3b0c44298fc1c149afb', 'admin',        'System Administrator', NOW()),
-(2, 'j.lual',        'a87ff679a2f3e71d9181', 'doctor',       'Dr. James Lual',       NOW()),
-(3, 'g.akuei',       'eccbc87e4b5ce2fe2830', 'doctor',       'Dr. Grace Akuei',      NOW()),
-(4, 'amina.lado',    'c4ca4238a0b923820dcc', 'receptionist', 'Amina Lado',           NOW()),
-(5, 'john.ladu',     'c81e728d9d4c2f636f06', 'receptionist', 'John Ladu',            NOW());
+(1, 'admin.juba',    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin',        'System Administrator', NOW()),
+(2, 'j.lual',        'f348d5628621f3d8f59c8cabda0f8eb0aa7e0514a90be7571020b1336f26c113', 'doctor',       'Dr. James Lual',       NOW()),
+(3, 'g.akuei',       'f348d5628621f3d8f59c8cabda0f8eb0aa7e0514a90be7571020b1336f26c113', 'doctor',       'Dr. Grace Akuei',      NOW()),
+(4, 'amina.lado',    '353411c26b9f21bdde038ac71b3516ad98506c0b573b74cf91e9d63a833241ed', 'receptionist', 'Amina Lado',           NOW()),
+(5, 'john.ladu',     'b4b597c714a8f49103da4dab0266af0ee0ae4f8575250a84855c3d76941cd422', 'receptionist', 'John Ladu',            NOW());
 
 -- reports
 INSERT INTO `reports` VALUES

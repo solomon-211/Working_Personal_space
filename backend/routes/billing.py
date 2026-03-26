@@ -1,53 +1,9 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime
-from uuid import uuid4
 from config import get_db_connection
 from cache import cache_get, cache_set, cache_invalidate
 from routes.auth import login_required, role_required
-from mysql.connector import IntegrityError
 
 billing_bp = Blueprint('billing', __name__)
-
-
-def build_payment_reference(data, method):
-    """Build a compact reference string when a method-specific payload is provided."""
-    explicit_ref = (data.get('reference_no') or '').strip()
-    if explicit_ref:
-        return explicit_ref[:100]
-
-    if method == 'Card':
-        network = (data.get('card_network') or '').strip()
-        last4 = (data.get('card_last4') or '').strip()
-        auth_code = (data.get('card_auth_code') or '').strip()
-        if not last4 and not auth_code:
-            return ''
-        return f"CARD {network} ****{last4} AUTH:{auth_code}".strip()[:100]
-
-    if method == 'Mobile':
-        provider = (data.get('mobile_provider') or '').strip()
-        number = (data.get('mobile_number') or '').strip()
-        txn_id = (data.get('mobile_txn_id') or '').strip()
-        if not txn_id:
-            return ''
-        return f"MOBILE {provider} {number} TXN:{txn_id}".strip()[:100]
-
-    if method == 'Insurance':
-        insurer = (data.get('insurer_name') or '').strip()
-        claim = (data.get('insurance_claim_no') or '').strip()
-        auth_code = (data.get('insurance_auth_code') or '').strip()
-        if not claim:
-            return ''
-        return f"INSURANCE {insurer} CLAIM:{claim} AUTH:{auth_code}".strip()[:100]
-
-    return ''
-
-
-def generate_payment_reference(invoice_id, method):
-    """Generate a compact unique payment reference when the caller did not provide one."""
-    method_prefix = (method or 'PAY').upper()[:4]
-    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    token = uuid4().hex[:6].upper()
-    return f"{method_prefix}-{invoice_id}-{timestamp}-{token}"[:100]
 
 
 # route to get all billable services offered by the clinic
@@ -90,7 +46,7 @@ def get_invoices():
         return jsonify({'invoices': cached, 'source': 'cache'}), 200
 
     query  = """
-        SELECT i.invoice_id, i.appointment_id, i.invoice_date, i.total_amount,
+        SELECT i.invoice_id, i.invoice_date, i.total_amount,
                i.discount, i.amount_due, i.payment_status,
                p.first_name, p.last_name, p.clinic_number
         FROM invoices i
@@ -156,20 +112,6 @@ def get_invoice(invoice_id):
             WHERE ii.invoice_id = %s
         """, (invoice_id,))
         invoice['items'] = cursor.fetchall()
-
-        # Attach payments so frontend can show payment history and metadata.
-        cursor.execute("""
-            SELECT payment_id, payment_date, amount_paid, payment_method,
-                   reference_no, received_by
-            FROM payments
-            WHERE invoice_id = %s
-            ORDER BY payment_date DESC, payment_id DESC
-        """, (invoice_id,))
-        invoice['payments'] = cursor.fetchall()
-
-        paid_total = sum(float(p['amount_paid']) for p in invoice['payments'])
-        invoice['paid_total'] = round(paid_total, 2)
-        invoice['remaining_balance'] = round(max(float(invoice['amount_due']) - paid_total, 0), 2)
         conn.close()
     except Exception as e:
         return jsonify({'error': 'Could not retrieve invoice.', 'details': str(e)}), 503
@@ -187,7 +129,7 @@ def create_invoice():
     Expected body:
     {
         "patient_id": 1,
-        "visit_id": 5,               (required)
+        "appointment_id": 3,          (optional)
         "discount": 1000,             (optional, default 0)
         "items": [
             { "service_id": 1, "quantity": 1 },
@@ -200,38 +142,12 @@ def create_invoice():
         return jsonify({'error': 'No data provided'}), 400
     if not data.get('patient_id'):
         return jsonify({'error': 'patient_id is required'}), 400
-    if not data.get('visit_id'):
-        return jsonify({'error': 'visit_id is required'}), 400
     if not data.get('items') or len(data['items']) == 0:
         return jsonify({'error': 'At least one item is required'}), 400
-
-    visit_id       = int(data['visit_id'])
-    appointment_id = None
 
     try:
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # Check this visit belongs to the patient and has no invoice yet
-        cursor.execute("""
-            SELECT v.visit_id, v.patient_id, v.appointment_id
-            FROM medical_visits v
-            WHERE v.visit_id = %s
-        """, (visit_id,))
-        visit = cursor.fetchone()
-        if not visit:
-            conn.close()
-            return jsonify({'error': 'Visit not found'}), 404
-        if int(visit['patient_id']) != int(data['patient_id']):
-            conn.close()
-            return jsonify({'error': 'Visit does not belong to the selected patient'}), 409
-
-        cursor.execute("SELECT invoice_id FROM invoices WHERE visit_id = %s LIMIT 1", (visit_id,))
-        if cursor.fetchone():
-            conn.close()
-            return jsonify({'error': 'An invoice has already been created for this visit'}), 409
-
-        appointment_id = visit['appointment_id']
 
         # Look up the unit price for each service_id from the services table
         total = 0.0
@@ -250,47 +166,17 @@ def create_invoice():
             line_items.append((item['service_id'], qty, price, subtotal))
 
         discount   = float(data.get('discount', 0))
-        if appointment_id:
-            # Validate the appointment is completed and belongs to the patient
-            cursor.execute("""
-                SELECT appointment_id, patient_id, status
-                FROM appointments WHERE appointment_id = %s
-            """, (appointment_id,))
-            appointment = cursor.fetchone()
-            if appointment and int(appointment['patient_id']) == int(data['patient_id']):
-                if appointment['status'] != 'Completed':
-                    conn.close()
-                    return jsonify({'error': 'Invoice can only be created for completed appointments'}), 409
-
-        if discount < 0:
-            conn.close()
-            return jsonify({'error': 'Discount cannot be negative'}), 400
-        if discount > total:
-            conn.close()
-            return jsonify({'error': 'Discount cannot exceed invoice total'}), 400
         amount_due = total - discount
-
-        if appointment_id:
-            # Verify no duplicate invoice exists for this appointment either
-            cursor.execute("SELECT invoice_id FROM invoices WHERE appointment_id = %s LIMIT 1", (appointment_id,))
-            existing = cursor.fetchone()
-            if existing:
-                conn.close()
-                return jsonify({
-                    'error': 'This appointment already has an invoice',
-                    'invoice_id': existing['invoice_id']
-                }), 409
 
         # Insert the invoice header
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO invoices (patient_id, visit_id, appointment_id, invoice_date,
+            INSERT INTO invoices (patient_id, appointment_id, invoice_date,
                                   total_amount, discount, amount_due, payment_status)
-            VALUES (%s, %s, %s, CURDATE(), %s, %s, %s, 'Unpaid')
+            VALUES (%s, %s, CURDATE(), %s, %s, %s, 'Unpaid')
         """, (
             data['patient_id'],
-            visit_id,
-            appointment_id,
+            data.get('appointment_id'),
             total, discount, amount_due
         ))
         invoice_id = cursor.lastrowid
@@ -304,28 +190,9 @@ def create_invoice():
         conn.commit()
         conn.close()
     except Exception as e:
-        if isinstance(e, IntegrityError):
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
-                cursor.execute(
-                    "SELECT invoice_id FROM invoices WHERE visit_id = %s LIMIT 1",
-                    (visit_id,)
-                )
-                existing = cursor.fetchone()
-                conn.close()
-                if existing:
-                    return jsonify({
-                        'error': 'An invoice has already been created for this visit',
-                        'invoice_id': existing['invoice_id']
-                    }), 409
-            except Exception:
-                pass
         return jsonify({'error': 'Could not create invoice.', 'details': str(e)}), 503
 
     cache_invalidate('invoices')
-    cache_invalidate(f'medical-visits:{data["patient_id"]}')
-    cache_invalidate('patients:')
     return jsonify({'invoice_id': invoice_id, 'total': total, 'amount_due': amount_due}), 201
 
 
@@ -341,26 +208,6 @@ def record_payment():
     missing  = [f for f in required if not data.get(f)]
     if missing:
         return jsonify({'error': f'Missing required fields: {", ".join(missing)}'}), 400
-
-    try:
-        amount_paid = float(data.get('amount_paid') or 0)
-    except (TypeError, ValueError):
-        return jsonify({'error': 'amount_paid must be a valid number'}), 400
-    if amount_paid <= 0:
-        return jsonify({'error': 'amount_paid must be greater than zero'}), 400
-
-    payment_method = data.get('payment_method', 'Cash')
-    valid_methods = ('Cash', 'Card', 'Mobile', 'Insurance')
-    if payment_method not in valid_methods:
-        return jsonify({'error': f'payment_method must be one of: {", ".join(valid_methods)}'}), 400
-
-    method_ref = build_payment_reference(data, payment_method)
-    if payment_method != 'Cash' and not method_ref:
-        return jsonify({
-            'error': f'{payment_method} payment requires method-specific details or a reference_no'
-        }), 400
-
-    payment_reference = method_ref or generate_payment_reference(data['invoice_id'], payment_method)
 
     try:
         conn   = get_db_connection()
@@ -385,21 +232,6 @@ def record_payment():
             conn.close()
             return jsonify({'error': 'This invoice is already fully paid'}), 409
 
-        already_paid = float(invoice['already_paid'])
-        amount_due = float(invoice['amount_due'])
-        remaining_balance = max(amount_due - already_paid, 0)
-
-        if remaining_balance <= 0:
-            conn.close()
-            return jsonify({'error': 'This invoice is already settled'}), 409
-
-        if amount_paid > remaining_balance:
-            conn.close()
-            return jsonify({
-                'error': f'Payment exceeds remaining balance ({remaining_balance:.2f} SSP)',
-                'remaining_balance': round(remaining_balance, 2)
-            }), 409
-
         # Record the payment
         cursor = conn.cursor()
         cursor.execute("""
@@ -408,15 +240,15 @@ def record_payment():
         """, (
             data['invoice_id'],
             data['payment_date'],
-            amount_paid,
-            payment_method,
-            payment_reference,
+            data['amount_paid'],
+            data.get('payment_method', 'Cash'),
+            data.get('reference_no', ''),
             data.get('received_by', '')
         ))
 
         # Recalculate and update payment_status on the invoice
-        total_paid = already_paid + amount_paid
-        if total_paid >= amount_due:
+        total_paid = float(invoice['already_paid']) + float(data['amount_paid'])
+        if total_paid >= float(invoice['amount_due']):
             new_status = 'Paid'
         elif total_paid > 0:
             new_status = 'Partial'
@@ -433,9 +265,4 @@ def record_payment():
         return jsonify({'error': 'Payment recording failed.', 'details': str(e)}), 503
 
     cache_invalidate('invoices')
-    return jsonify({
-        'message': 'Payment recorded',
-        'new_status': new_status,
-        'reference_no': payment_reference,
-        'remaining_balance': round(max(amount_due - total_paid, 0), 2)
-    }), 201
+    return jsonify({'message': 'Payment recorded', 'new_status': new_status}), 201

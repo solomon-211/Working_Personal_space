@@ -17,7 +17,7 @@ app.config.from_object(Config)
 # Allow frontend (HTML/JS) to call the API from a different port or origin
 CORS(app, 
      supports_credentials=True,
-     origins=["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:8080", "http://127.0.0.1:8080"]
+     origins=["http://127.0.0.1:5500", "http://localhost:5500"]
 )
 
 # Register all blueprints with the /api prefix

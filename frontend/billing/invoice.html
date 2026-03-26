@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoice — CCMS</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232563EB'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='13' font-weight='700' font-family='sans-serif'>HB</text></svg>">
   <link rel="stylesheet" href="../assets/css/style.css" />
   <link rel="stylesheet" href="invoice.css" />
 </head>
@@ -112,40 +111,107 @@
   </main>
 </div>
 
-<!-- Payment modal — amount, method, and optional reference number -->
+<!-- Payment modal -->
 <div class="modal-overlay" id="payment-modal">
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">Record Payment</h3>
       <button class="modal-close" onclick="hideModal('payment-modal')">×</button>
     </div>
+    <input type="hidden" id="pay-amount-due">
+
     <div class="form-group">
       <label class="form-label">Amount (SSP) <span class="required">*</span></label>
       <input type="number" id="pay-amount" class="form-control" min="0" step="0.01" placeholder="0.00">
-      <small class="invoice-help-text" id="pay-remaining">Remaining: —</small>
+      <small id="pay-remaining-hint" style="color:var(--text-muted);font-size:11px;"></small>
     </div>
+
     <div class="form-group">
       <label class="form-label">Payment Method</label>
-      <select id="pay-method" class="form-control" title="Payment method">
+      <select id="pay-method" class="form-control" title="Payment method" onchange="onMethodChange()">
         <option value="Cash">Cash</option>
         <option value="Card">Card</option>
         <option value="Mobile">Mobile</option>
         <option value="Insurance">Insurance</option>
       </select>
     </div>
-    <div class="form-group">
-      <label class="form-label">Reference No.</label>
-      <input type="text" id="pay-ref" class="form-control" placeholder="Optional">
+
+    <!-- Cash fields -->
+    <div id="fields-Cash">
+      <div class="form-group">
+        <label class="form-label">Reference No.</label>
+        <input type="text" id="cash-ref" class="form-control" placeholder="Optional">
+      </div>
     </div>
-    <div id="payment-extra-fields"></div>
-    <div id="payment-error" class="payment-inline-error"></div>
+
+    <!-- Card fields -->
+    <div id="fields-Card" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Patient Email <span class="required">*</span></label>
+        <input type="email" id="card-email" class="form-control" placeholder="patient@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Card Network</label>
+        <input type="text" id="card-network" class="form-control" placeholder="Visa, Mastercard...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Card Last 4 Digits</label>
+        <input type="text" id="card-last4" class="form-control" maxlength="4" placeholder="1234">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Authorization Code</label>
+        <input type="text" id="card-auth" class="form-control" placeholder="Bank authorization code">
+      </div>
+    </div>
+
+    <!-- Mobile fields -->
+    <div id="fields-Mobile" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Patient Email <span class="required">*</span></label>
+        <input type="email" id="mobile-email" class="form-control" placeholder="patient@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mobile Provider</label>
+        <input type="text" id="mobile-provider" class="form-control" placeholder="e.g. MTN, Zain">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mobile Number</label>
+        <input type="text" id="mobile-number" class="form-control" placeholder="+211...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Transaction ID</label>
+        <input type="text" id="mobile-txn" class="form-control" placeholder="Required if no reference number">
+      </div>
+    </div>
+
+    <!-- Insurance fields -->
+    <div id="fields-Insurance" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Reference No.</label>
+        <input type="text" id="ins-ref" class="form-control" placeholder="Optional">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Insurer Name</label>
+        <input type="text" id="ins-name" class="form-control" placeholder="Insurance provider">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Claim Number</label>
+        <input type="text" id="ins-claim" class="form-control" placeholder="Required if no reference number">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Authorization Code</label>
+        <input type="text" id="ins-auth" class="form-control" placeholder="Optional pre-auth code">
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="hideModal('payment-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitPayment()">Record Payment</button>
+      <button class="btn btn-primary" id="pay-submit-btn" onclick="submitPayment()">Record Payment</button>
     </div>
   </div>
 </div>
 
+<script src="https://js.paystack.co/v1/inline.js"></script>
 <script src="../assets/js/utils.js"></script>
 <script src="invoice.js"></script>
 </body>

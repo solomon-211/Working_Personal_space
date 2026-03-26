@@ -1,18 +1,12 @@
-# Python virtual environment
-venv/
-venvvenv/
-env/
-.env
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 
-# OS files
+# Environment
+.env
+
+# OS
 .DS_Store
 Thumbs.db
-
-# Debug/temp files
-cookie.txt
-*.log

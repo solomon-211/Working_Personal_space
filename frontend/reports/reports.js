@@ -114,14 +114,14 @@ async function generateReport(type) {
     } else if (type === 'operational') {
       const byStatus = res?.appointments_by_status || [];
       const total = byStatus.reduce((s, r) => s + Number(r.count || 0), 0);
-      const completed = byStatus.find(r => r.status === 'Completed')?.count || 0;
-      const cancelled = byStatus.find(r => r.status === 'Cancelled')?.count || 0;
+      const count = status => Number(byStatus.find(r => r.status === status)?.count || 0);
       reportData = {
         total_appointments: total,
-        completion_rate:    total ? (Number(completed) / total * 100) : 0,
-        cancellation_rate:  total ? (Number(cancelled) / total * 100) : 0,
-        scheduled_rate:     Number(res?.scheduled_rate || 0),
-        no_show_rate:       Number(res?.no_show_rate   || 0),
+        completion_rate:    total ? (count('Completed') / total * 100) : 0,
+        cancellation_rate:  total ? (count('Cancelled') / total * 100) : 0,
+        no_show_rate:       total ? (count('No-show')   / total * 100) : 0,
+        scheduled_rate:     total ? (count('Scheduled') / total * 100) : 0,
+        avg_wait_time:      Number(res?.avg_wait_time_minutes || 0),
         details: byStatus.map(r => ({ Status: r.status, Count: r.count }))
       };
     }
@@ -165,6 +165,7 @@ function renderSummaryCards(type) {
     html += card('Cancellation Rate', reportData.cancellation_rate.toFixed(1) + '%');
     html += card('No-show Rate',      reportData.no_show_rate.toFixed(1)      + '%');
     html += card('Scheduled Rate',    reportData.scheduled_rate.toFixed(1)    + '%');
+    html += card('Avg Wait Time',     reportData.avg_wait_time + ' min');
   }
 
   html += '</div>';
@@ -222,55 +223,8 @@ function renderChart(type) {
       }).join('');
     }, 50);
 
-  } else if (type === 'financial') {
-    const byMethod = (reportData.details || []).filter(r => r.Category === 'Payment Method');
-    const total = byMethod.reduce((s, r) => s + Number(r.Total || 0), 0) || 1;
-    const colors = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6'];
-    el.innerHTML = `
-      <div class="chart-container">
-        <div class="chart-title">Revenue by Payment Method</div>
-        <div style="display:flex;gap:20px;align-items:center;margin-top:12px;">
-          <canvas id="fin-chart" width="200" height="200"></canvas>
-          <div id="fin-legend" style="flex:1;"></div>
-        </div>
-      </div>`;
-    setTimeout(() => {
-      drawPie('fin-chart', byMethod.map(r => Number(r.Total)), colors);
-      document.getElementById('fin-legend').innerHTML = byMethod.map((r, i) => {
-        const pct = Math.round(Number(r.Total) / total * 100);
-        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <div style="width:12px;height:12px;border-radius:2px;background:${colors[i]};"></div>
-          <span style="font-size:12px;">${r.Label}</span>
-          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${formatCurrency(Number(r.Total))} (${pct}%)</span>
-        </div>`;
-      }).join('');
-    }, 50);
-
-  } else if (type === 'operational') {
-    const byStatus = reportData.details || [];
-    const total = byStatus.reduce((s, r) => s + Number(r.Count || 0), 0) || 1;
-    const colors = ['#10B981','#2563EB','#F59E0B','#EF4444','#8B5CF6','#0EA5E9'];
-    el.innerHTML = `
-      <div class="chart-container">
-        <div class="chart-title">Appointments by Status</div>
-        <div style="display:flex;gap:20px;align-items:center;margin-top:12px;">
-          <canvas id="op-chart" width="200" height="200"></canvas>
-          <div id="op-legend" style="flex:1;"></div>
-        </div>
-      </div>`;
-    setTimeout(() => {
-      drawPie('op-chart', byStatus.map(r => Number(r.Count)), colors);
-      document.getElementById('op-legend').innerHTML = byStatus.map((r, i) => {
-        const pct = Math.round(Number(r.Count) / total * 100);
-        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <div style="width:12px;height:12px;border-radius:2px;background:${colors[i]};"></div>
-          <span style="font-size:12px;">${r.Status}</span>
-          <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">${r.Count} (${pct}%)</span>
-        </div>`;
-      }).join('');
-    }, 50);
-
   } else {
+    // Financial and operational reports don't have a chart — clear the area
     el.innerHTML = '';
   }
 }

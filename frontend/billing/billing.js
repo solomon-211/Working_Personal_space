@@ -1,3 +1,5 @@
+const PAYSTACK_KEY = 'pk_test_3455a2b37d2f3525e62e5d89a0faa783b23d7c55';
+
 // Only admin and receptionist can access the billing page
 authGuard();
 checkRole(['receptionist', 'admin']) || (location.href = '/dashboard/index.html');
@@ -12,129 +14,9 @@ applyRoleVisibility();
 let allInvoices = [];
 let allServices = [];
 let allPatients = [];
-let paymentContextInvoice = null;
 
 // If another page set this, we'll pre-select the patient when the create modal opens
 let pendingPrefillPatientId = sessionStorage.getItem('prefillInvoicePatientId');
-let pendingPrefillAppointmentId = sessionStorage.getItem('prefillInvoiceAppointmentId');
-
-function clearPaymentError() {
-  const errorEl = document.getElementById('payment-error');
-  if (!errorEl) return;
-  errorEl.style.display = 'none';
-  errorEl.textContent = '';
-}
-
-function showPaymentError(message) {
-  const errorEl = document.getElementById('payment-error');
-  if (!errorEl) {
-    showToast(message, 'error');
-    return;
-  }
-  errorEl.textContent = message;
-  errorEl.style.display = 'block';
-}
-
-function formatRemainingLabel(amount) {
-  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return 'Remaining: —';
-  return `Remaining: ${formatCurrency(amount)}`;
-}
-
-function renderPaymentExtraFields(method) {
-  const container = document.getElementById('payment-extra-fields');
-  if (!container) return;
-
-  if (method === 'Card') {
-    container.innerHTML = `
-      <div class="payment-extra-grid">
-        <div class="form-group">
-          <label class="form-label">Card Network</label>
-          <input type="text" id="pay-card-network" class="form-control" placeholder="Visa, Mastercard...">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Card Last 4 Digits</label>
-          <input type="text" id="pay-card-last4" class="form-control" maxlength="4" placeholder="1234">
-        </div>
-        <div class="form-group full-span">
-          <label class="form-label">Authorization Code</label>
-          <input type="text" id="pay-card-auth" class="form-control" placeholder="Bank authorization code">
-        </div>
-      </div>`;
-    return;
-  }
-
-  if (method === 'Mobile') {
-    container.innerHTML = `
-      <div class="payment-extra-grid">
-        <div class="form-group">
-          <label class="form-label">Mobile Provider</label>
-          <input type="text" id="pay-mobile-provider" class="form-control" placeholder="e.g. MTN, Zain">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Mobile Number</label>
-          <input type="text" id="pay-mobile-number" class="form-control" placeholder="+211...">
-        </div>
-        <div class="form-group full-span">
-          <label class="form-label">Transaction ID</label>
-          <input type="text" id="pay-mobile-txn" class="form-control" placeholder="Required if no reference number">
-        </div>
-      </div>`;
-    return;
-  }
-
-  if (method === 'Insurance') {
-    container.innerHTML = `
-      <div class="payment-extra-grid">
-        <div class="form-group">
-          <label class="form-label">Insurer Name</label>
-          <input type="text" id="pay-insurer" class="form-control" placeholder="Insurance provider">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Claim Number</label>
-          <input type="text" id="pay-claim-no" class="form-control" placeholder="Required if no reference number">
-        </div>
-        <div class="form-group full-span">
-          <label class="form-label">Authorization Code</label>
-          <input type="text" id="pay-ins-auth" class="form-control" placeholder="Optional pre-auth code">
-        </div>
-      </div>`;
-    return;
-  }
-
-  container.innerHTML = '';
-}
-
-async function loadCompletedAppointmentsForPatient(patientId) {
-  const appointmentSelect = document.getElementById('invoice-appointment-select');
-  if (!appointmentSelect) return;
-
-  if (!patientId) {
-    appointmentSelect.innerHTML = '<option value="">Not linked to appointment</option>';
-    return;
-  }
-
-  appointmentSelect.innerHTML = '<option value="">Loading completed appointments...</option>';
-
-  try {
-    const res = await apiFetch(`/api/appointments?patient_id=${patientId}&status=Completed`);
-    const completed = (res?.appointments || []).filter(a => !a.has_invoice);
-
-    if (!completed.length) {
-      appointmentSelect.innerHTML = '<option value="">No completed appointment pending invoice</option>';
-      return;
-    }
-
-    appointmentSelect.innerHTML =
-      '<option value="">Not linked to appointment</option>' +
-      completed.map(a => `
-        <option value="${a.appointment_id}">
-          ${formatDate(a.appointment_datetime)} ${formatTime(a.appointment_datetime)} - ${a.doctor_name || 'Doctor'}
-        </option>
-      `).join('');
-  } catch (_e) {
-    appointmentSelect.innerHTML = '<option value="">Failed to load appointments</option>';
-  }
-}
 
 // Fetch all invoices from the backend
 async function loadInvoices() {
@@ -180,7 +62,7 @@ function renderInvoices(invoices) {
       <td>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-outline btn-sm" onclick="location.href='/billing/invoice.html?id=${inv.invoice_id}'">View</button>
-          ${inv.payment_status !== 'Paid' ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${inv.invoice_id})">Pay</button>` : ''}
+          ${inv.payment_status !== 'Paid' ? `<button class="btn btn-primary btn-sm" onclick="openPaymentModal(${inv.invoice_id}, ${inv.amount_due})">Pay</button>` : ''}
         </div>
       </td>
     </tr>`).join('');
@@ -211,14 +93,6 @@ async function openCreateInvoice() {
       sel.value = String(pendingPrefillPatientId);
       pendingPrefillPatientId = null;
       sessionStorage.removeItem('prefillInvoicePatientId');
-    }
-
-    await loadCompletedAppointmentsForPatient(sel.value);
-    if (pendingPrefillAppointmentId) {
-      const apptSel = document.getElementById('invoice-appointment-select');
-      apptSel.value = String(pendingPrefillAppointmentId);
-      pendingPrefillAppointmentId = null;
-      sessionStorage.removeItem('prefillInvoiceAppointmentId');
     }
     addServiceRow();
   } catch (e) {
@@ -274,7 +148,6 @@ function updateInvoiceTotal() {
 // Submit the new invoice — backend expects patient_id and items with service_id + quantity
 async function submitCreateInvoice() {
   const patientId = document.getElementById('invoice-patient-select').value;
-  const appointmentId = document.getElementById('invoice-appointment-select').value;
   if (!patientId) { showToast('Please select a patient', 'error'); return; }
 
   const items = [];
@@ -289,11 +162,7 @@ async function submitCreateInvoice() {
   try {
     await apiFetch('/api/invoices', {
       method: 'POST',
-      body: JSON.stringify({
-        patient_id: parseInt(patientId),
-        appointment_id: appointmentId ? parseInt(appointmentId) : null,
-        items
-      })
+      body: JSON.stringify({ patient_id: parseInt(patientId), items })
     });
     hideModal('create-invoice-modal');
     showToast('Invoice created successfully', 'success');
@@ -304,92 +173,98 @@ async function submitCreateInvoice() {
 }
 
 // Open the quick payment modal for a specific invoice
-async function openPaymentModal(invoiceId) {
-  clearPaymentError();
+function openPaymentModal(invoiceId, amountDue) {
   document.getElementById('pay-invoice-id').value = invoiceId;
-  document.getElementById('pay-amount').value = '';
-  document.getElementById('pay-method').value = 'Cash';
-  document.getElementById('pay-ref').value = '';
-  renderPaymentExtraFields('Cash');
-
-  paymentContextInvoice = null;
-  const remainingEl = document.getElementById('pay-remaining');
-  if (remainingEl) remainingEl.textContent = formatRemainingLabel(null);
-
-  try {
-    const res = await apiFetch(`/api/invoices/${invoiceId}`);
-    const invoice = res?.invoice || null;
-    paymentContextInvoice = invoice;
-    if (remainingEl) {
-      remainingEl.textContent = formatRemainingLabel(
-        invoice?.remaining_balance ?? invoice?.amount_due
-      );
-    }
-  } catch (_e) {}
-
+  document.getElementById('pay-amount-due').value = amountDue || 0;
+  document.getElementById('pay-amount').value     = amountDue || '';
+  document.getElementById('pay-method').value     = 'Cash';
+  // Clear all fields
+  ['cash-ref', 'card-email', 'card-network', 'card-last4', 'card-auth',
+   'mobile-email', 'mobile-provider', 'mobile-number', 'mobile-txn',
+   'ins-ref', 'ins-name', 'ins-claim', 'ins-auth'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('pay-remaining-hint').textContent = amountDue ? `Remaining: ${formatCurrency(amountDue)}` : '';
+  onMethodChange();
   showModal('payment-modal');
 }
 
-function buildMethodPayload(method, referenceNo) {
-  const payload = {};
-
-  if (method === 'Card') {
-    payload.card_network = document.getElementById('pay-card-network')?.value.trim() || '';
-    payload.card_last4 = document.getElementById('pay-card-last4')?.value.trim() || '';
-    payload.card_auth_code = document.getElementById('pay-card-auth')?.value.trim() || '';
-
-    if (!referenceNo && !payload.card_last4 && !payload.card_auth_code) {
-      throw new Error('Card payment needs card last 4 digits or authorization code (or reference number).');
-    }
-  }
-
-  if (method === 'Mobile') {
-    payload.mobile_provider = document.getElementById('pay-mobile-provider')?.value.trim() || '';
-    payload.mobile_number = document.getElementById('pay-mobile-number')?.value.trim() || '';
-    payload.mobile_txn_id = document.getElementById('pay-mobile-txn')?.value.trim() || '';
-
-    if (!referenceNo && !payload.mobile_txn_id) {
-      throw new Error('Mobile payment needs a transaction ID (or reference number).');
-    }
-  }
-
-  if (method === 'Insurance') {
-    payload.insurer_name = document.getElementById('pay-insurer')?.value.trim() || '';
-    payload.insurance_claim_no = document.getElementById('pay-claim-no')?.value.trim() || '';
-    payload.insurance_auth_code = document.getElementById('pay-ins-auth')?.value.trim() || '';
-
-    if (!referenceNo && !payload.insurance_claim_no) {
-      throw new Error('Insurance payment needs a claim number (or reference number).');
-    }
-  }
-
-  return payload;
+// Show only the fields relevant to the selected method
+function onMethodChange() {
+  const method = document.getElementById('pay-method').value;
+  ['Cash', 'Card', 'Mobile', 'Insurance'].forEach(m => {
+    document.getElementById(`fields-${m}`).style.display = m === method ? '' : 'none';
+  });
+  const isPaystack = method === 'Card' || method === 'Mobile';
+  document.getElementById('pay-submit-btn').textContent = isPaystack ? 'Pay with Paystack' : 'Record Payment';
 }
 
-// Submit a payment against an invoice
+// Route to Paystack or manual depending on method
 async function submitPayment() {
-  clearPaymentError();
   const invoiceId = document.getElementById('pay-invoice-id').value;
   const amount    = parseFloat(document.getElementById('pay-amount').value);
   const method    = document.getElementById('pay-method').value;
-  const ref       = document.getElementById('pay-ref').value.trim();
 
-  if (!amount || amount <= 0) { showPaymentError('Enter a valid amount.'); return; }
+  if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
 
-  const remaining = Number(paymentContextInvoice?.remaining_balance ?? paymentContextInvoice?.amount_due);
-  if (!Number.isNaN(remaining) && amount > remaining) {
-    showPaymentError(`Amount exceeds remaining balance (${formatCurrency(remaining)}).`);
-    return;
+  if (method === 'Card') {
+    const email = document.getElementById('card-email').value.trim();
+    if (!email) { showToast('Patient email is required for card payment', 'error'); return; }
+    launchPaystack(invoiceId, amount, 'Card', email, ['card']);
+  } else if (method === 'Mobile') {
+    const email = document.getElementById('mobile-email').value.trim();
+    if (!email) { showToast('Patient email is required for mobile payment', 'error'); return; }
+    launchPaystack(invoiceId, amount, 'Mobile', email, ['mobile_money']);
+  } else if (method === 'Cash') {
+    const ref = document.getElementById('cash-ref').value.trim();
+    await recordPayment(invoiceId, amount, 'Cash', ref);
+  } else if (method === 'Insurance') {
+    const ref  = document.getElementById('ins-ref').value.trim();
+    const claim = document.getElementById('ins-claim').value.trim();
+    if (!ref && !claim) { showToast('Enter a reference number or claim number', 'error'); return; }
+    const combined = [
+      document.getElementById('ins-name').value.trim(),
+      ref || claim,
+      document.getElementById('ins-auth').value.trim()
+    ].filter(Boolean).join(' | ');
+    await recordPayment(invoiceId, amount, 'Insurance', combined);
   }
+}
 
-  let methodPayload = {};
-  try {
-    methodPayload = buildMethodPayload(method, ref);
-  } catch (e) {
-    showPaymentError(e.message || 'Fill in required payment details.');
-    return;
-  }
+// Launch Paystack popup — on success auto-fills reference and saves to DB
+function launchPaystack(invoiceId, amount, method, email, channels) {
+  const handler = PaystackPop.setup({
+    key:      PAYSTACK_KEY,
+    email:    email,
+    amount:   Math.round(amount * 100),
+    currency: 'GHS',
+    ref:      `INV-${invoiceId}-${Date.now()}`,
+    channels: channels,
+    metadata: { invoice_id: invoiceId },
+    callback: async function(response) {
+      // Paystack confirmed — build reference string with extra card/mobile details
+      let ref = response.reference;
+      if (method === 'Card') {
+        const network = document.getElementById('card-network').value.trim();
+        const last4   = document.getElementById('card-last4').value.trim();
+        if (network || last4) ref += ` | ${network} ${last4}`.trim();
+      } else if (method === 'Mobile') {
+        const provider = document.getElementById('mobile-provider').value.trim();
+        const number   = document.getElementById('mobile-number').value.trim();
+        if (provider || number) ref += ` | ${provider} ${number}`.trim();
+      }
+      await recordPayment(invoiceId, amount, method, ref);
+    },
+    onClose: function() {
+      showToast('Payment cancelled', 'warning');
+    }
+  });
+  handler.openIframe();
+}
 
+// POST payment to backend — used by all 4 methods
+async function recordPayment(invoiceId, amount, method, ref) {
   try {
     await apiFetch('/api/payments', {
       method: 'POST',
@@ -398,29 +273,21 @@ async function submitPayment() {
         amount_paid:    amount,
         payment_method: method,
         payment_date:   new Date().toISOString().split('T')[0],
-        reference_no:   ref,
-        received_by:    sessionStorage.getItem('name') || '',
-        ...methodPayload
+        reference_no:   ref || '',
+        received_by:    sessionStorage.getItem('name') || ''
       })
     });
     hideModal('payment-modal');
     showToast('Payment recorded successfully', 'success');
     loadInvoices();
   } catch (e) {
-    showPaymentError(e.message || 'Failed to record payment');
+    showToast(e.message || 'Failed to record payment', 'error');
   }
 }
 
 // Re-apply filters whenever the user types in the search box or changes the status dropdown
 document.getElementById('filter-patient').addEventListener('input', applyFilters);
 document.getElementById('filter-status').addEventListener('change', applyFilters);
-document.getElementById('invoice-patient-select').addEventListener('change', (e) => {
-  loadCompletedAppointmentsForPatient(e.target.value);
-});
-document.getElementById('pay-method').addEventListener('change', (e) => {
-  clearPaymentError();
-  renderPaymentExtraFields(e.target.value);
-});
 
 loadInvoices();
 

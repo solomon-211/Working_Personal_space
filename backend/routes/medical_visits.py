@@ -20,15 +20,14 @@ def get_patient_visits(patient_id):
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Fetch all visits for this patient, including invoice status linked by visit_id
+        # Fetch all visits for this patient, with invoice status attached
         cursor.execute("""
             SELECT v.visit_id, v.visit_date, v.notes,
                    d.full_name AS doctor_name,
-                   v.appointment_id,
                    CASE WHEN i.invoice_id IS NOT NULL THEN 1 ELSE 0 END AS has_invoice,
                    i.invoice_id AS linked_invoice_id
             FROM medical_visits v
-            JOIN doctors d ON v.doctor_id = d.doctor_id
+            JOIN doctors  d ON v.doctor_id  = d.doctor_id
             LEFT JOIN invoices i ON i.visit_id = v.visit_id
             WHERE v.patient_id = %s
             ORDER BY v.visit_date DESC
