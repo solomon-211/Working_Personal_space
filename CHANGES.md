@@ -148,22 +148,7 @@ roles, using the `pending_invoice_count` and `invoiced_count` fields from the AP
 - Green **"Invoiced"** button — all visits have invoices
 - No button shown for doctors or when no visits exist
 
-Added `goToInvoice(patientId)` which navigates to
-`profile.html?id=X#billing`.
-
-```diff
-+ const needsInvoice = isAdminOrRec && (patient.pending_invoice_count || 0) > 0;
-+ const hasInvoiced  = isAdminOrRec && (patient.invoiced_count || 0) > 0;
-+ const invoiceBtn   = needsInvoice
-+   ? `<button ...>Needs Invoice</button>`
-+   : hasInvoiced
-+     ? `<button ...>Invoiced</button>`
-+     : '';
-+
-+ function goToInvoice(patientId) {
-+   location.href = `/patients/profile.html?id=${patientId}#billing`;
-+ }
-```
+Added `goToInvoice(patientId)` which navigates to `profile.html?id=X#billing`.
 
 ---
 
@@ -178,27 +163,8 @@ Added `renderVisitInvoiceCell(visit, role)` which replaces the old hardcoded
 - **"Generate Invoice"** button — if no invoice and role is admin or receptionist
 - **"Pending Invoice"** text — if no invoice and role is doctor (read-only)
 
-Also fixed `submitInvoice()`:
-- Now passes `visit_id` in the POST body so the invoice is linked to the visit
-- On success calls `loadVisits()` and `loadBilling()` in-place instead of
-  redirecting — the button updates to "View Invoice" without a page reload
-
-```diff
-+ function renderVisitInvoiceCell(visit, role) {
-+   if (Number(visit.has_invoice) === 1)
-+     return `<a href="/billing/invoice.html?id=${visit.linked_invoice_id}">View Invoice</a>`;
-+   if (role === 'admin' || role === 'receptionist')
-+     return `<button onclick="openInvoiceModal(...)">Generate Invoice</button>`;
-+   return '<span>Pending Invoice</span>';
-+ }
-+
-+ // submitInvoice — visit_id now included:
-+ body: JSON.stringify({ patient_id, visit_id: invoiceVisitId, items, discount })
-+
-+ // on success — reload in place instead of redirect:
-+ loadVisits();
-+ loadBilling();
-```
+Also fixed `submitInvoice()` to pass `visit_id` in the POST body and reload
+in-place instead of redirecting after success.
 
 ---
 
@@ -208,22 +174,8 @@ Also fixed `submitInvoice()`:
 
 The operational report only calculated `completion_rate` and `cancellation_rate`.
 `no_show_rate` and `scheduled_rate` were never computed, so they showed as `0.0%`.
-
-Fixed by replacing two hardcoded `find()` calls with a reusable `count(status)`
-helper, and adding both missing rates to `reportData` and `renderSummaryCards`.
-
-```diff
-+ const count = status => Number(byStatus.find(r => r.status === status)?.count || 0);
-  reportData = {
-    completion_rate:    total ? (count('Completed') / total * 100) : 0,
-    cancellation_rate:  total ? (count('Cancelled') / total * 100) : 0,
-+   no_show_rate:       total ? (count('No-show')   / total * 100) : 0,
-+   scheduled_rate:     total ? (count('Scheduled') / total * 100) : 0,
-  };
-
-+ html += card('No-show Rate',   reportData.no_show_rate.toFixed(1)   + '%');
-+ html += card('Scheduled Rate', reportData.scheduled_rate.toFixed(1) + '%');
-```
+Fixed by adding a reusable `count(status)` helper and adding both missing rates
+to `reportData` and `renderSummaryCards`.
 
 ---
 
@@ -233,57 +185,146 @@ helper, and adding both missing rates to `reportData` and `renderSummaryCards`.
 `frontend/billing/invoice.js`, `frontend/billing/index.html`,
 `frontend/billing/invoice.html`
 
-### Backend — two new routes added to `billing.py`
-
-**`POST /api/paystack/initialize`**
-Calls Paystack's `/transaction/initialize` API server-side using the secret key
-(which never leaves the backend). Returns `reference` and `access_code` to the
-frontend.
-
-**`GET /api/paystack/verify/:reference`**
-Calls Paystack's `/transaction/verify/:reference` API to confirm the payment
-actually succeeded before saving anything to the database. Returns verified
-amount, card type, last4, and mobile number from Paystack's response.
-
-### Frontend — payment modal rebuilt with method-specific fields
-
-The single generic payment modal was replaced with four method-specific field
-sections that show/hide based on the selected payment method:
-
-| Method | Fields | Gateway |
-|---|---|---|
-| Cash | Reference No. (optional) | None — saved directly |
-| Card | Patient Email (required) | Paystack popup |
-| Mobile | Patient Email (required) | Paystack popup |
-| Insurance | Reference No., Insurer Name, Claim Number, Auth Code | None — saved directly |
-
-### Card / Mobile payment flow
-
-1. Staff enters amount and patient email
-2. Frontend calls `POST /api/paystack/initialize` — secret key stays on server
-3. Paystack popup opens using `access_code` — card/mobile details entered inside Paystack's secure UI
-4. On success, Paystack calls `onPaystackSuccess(response)` with a `reference`
-5. Frontend calls `GET /api/paystack/verify/:reference` — Flask confirms with Paystack
-6. Only after verification passes → `POST /api/payments` saves to DB with Paystack reference
-
-### Paystack inline script added to both billing pages
-
-```diff
-+ <script src="https://js.paystack.co/v1/inline.js"></script>
-```
+Two new backend routes: `POST /api/paystack/initialize` and
+`GET /api/paystack/verify/:reference`. The secret key never leaves the server.
+Payment modal rebuilt with method-specific fields for Cash, Card, Mobile, and
+Insurance. Card and Mobile go through Paystack's secure popup with backend
+verification before saving to DB.
 
 ---
 
 ## [11] New file: backend/.env
 
-Created `backend/.env` with correct database credentials so `load_dotenv()` in
-`config.py` can find it. Previously the `.env` was misplaced inside `backend/routes/`
-and was never loaded.
+Created `backend/.env` in the correct location so `load_dotenv()` in
+`config.py` can find it.
 
 ---
 
 ## [12] New file: README.md
 
-Created `README.md` at the project root documenting the full system — project
-structure, setup guide, test accounts, API reference, frontend pages, all key
-features, environment variables, database schema, and dependencies.
+Created `README.md` documenting setup guide, test accounts, API reference,
+and key features.
+
+---
+
+## [13] Fix: SQL alias error in appointment booking
+
+**File:** `backend/routes/appointments.py`
+
+The double-booking check query referenced `a.status` but the table had no alias
+`a`, causing a 503 error on every `POST /api/appointments`.
+
+```diff
+- AND a.status = 'Scheduled'
++ AND status   = 'Scheduled'
+```
+
+---
+
+## [14] Fix: visit_id not saved when creating invoice
+
+**File:** `backend/routes/billing.py`
+
+The `POST /api/invoices` INSERT was missing `visit_id` in the column list so it
+was always saved as `NULL`. This caused `has_invoice` to stay 0 for the visit,
+meaning "Generate Invoice" never flipped to "View Invoice" after creation.
+
+Also added `cache_invalidate('patients')` and `cache_invalidate('medical-visits')`
+after invoice creation so the patient list and visit invoice status update
+immediately without waiting for cache TTL expiry.
+
+```diff
+- INSERT INTO invoices (patient_id, appointment_id, ...)
++ INSERT INTO invoices (patient_id, visit_id, appointment_id, ...)
+```
+
+---
+
+## [15] Feature: idbCache invalidation on mutations
+
+**File:** `frontend/assets/js/utils.js`
+
+Added two new methods to `idbCache`:
+
+- `del(key)` — deletes a single cache entry by exact key
+- `invalidate(prefix)` — deletes all entries whose key starts with a given prefix
+
+Added automatic cache invalidation inside `apiFetch` after any successful
+POST/PATCH/DELETE based on an invalidation map:
+
+| Mutation endpoint | Clears |
+|---|---|
+| `/api/invoices` | `/api/patients`, `/api/invoices`, `/api/medical-visits` |
+| `/api/payments` | `/api/invoices` |
+| `/api/patients` | `/api/patients` |
+| `/api/appointments` | `/api/appointments` |
+| `/api/medical-visits` | `/api/medical-visits`, `/api/patients` |
+| `/api/prescriptions` | `/api/prescriptions` |
+| `/api/diagnoses` | `/api/medical-visits` |
+
+---
+
+## [16] Fix: Patient list always fetches fresh data on load
+
+**File:** `frontend/patients/list.js`
+
+`loadPatients()` now accepts a `bustCache` parameter. The initial page load
+calls `loadPatients('', true)` which clears the `/api/patients` IndexedDB cache
+before fetching. This ensures navigating back after creating an invoice always
+shows the correct "Invoiced" status instead of stale "Needs Invoice".
+
+Removed dead `editPatient()` function that only showed a "coming soon" toast.
+
+---
+
+## [17] Fix: Invoice creation updates visit button in real time
+
+**File:** `frontend/patients/profile.js`
+
+After `submitInvoice()` succeeds, the code now explicitly awaits
+`idbCache.invalidate()` for `/api/medical-visits`, `/api/invoices`, and
+`/api/patients` before calling `loadVisits()` and `loadBilling()`. This
+guarantees the cache is cleared before the next fetch, so "Generate Invoice"
+immediately changes to "View Invoice" without a page reload.
+
+Removed dead `?edit=true` URL parameter check — no page navigates to
+`profile.html?edit=true`.
+
+---
+
+## [18] Feature: Pie charts for financial and operational reports
+
+**File:** `frontend/reports/reports.js`
+
+Added pie charts to two previously chart-less report types:
+
+- **Financial** — "Revenue by Payment Method" showing Cash, Insurance, Card,
+  and Mobile slices with SSP amounts and percentages
+- **Operational** — "Appointments by Status" showing Completed, No-show,
+  Cancelled, and Scheduled slices with counts and percentages
+
+Removed the **Avg Wait Time** summary card from the operational report — it
+always showed 0 since `analytics_snapshots` has no relevant data.
+
+---
+
+## [19] Fix: btn-warning CSS class missing
+
+**File:** `frontend/assets/css/style.css`
+
+The "Needs Invoice" button used `btn-warning` which was never defined,
+causing it to render with no background. Added amber-yellow `#F59E0B` which
+pairs visually with the green `btn-success` used for "Invoiced".
+
+---
+
+## [20] Fix: Approved step persists across page refreshes
+
+**File:** `frontend/appointments/appointments.js`
+
+`viewApprovedIds` was a plain `Set` that reset on every page refresh. Changed
+to read from and write to `sessionStorage` via a `persistApproved()` helper so
+approvals survive for the duration of the doctor's session and clear on logout.
+
+Removed `confirm()` browser popup from `cancelAppointment()` — replaced with
+direct action consistent with the toast-based UX used everywhere else.
